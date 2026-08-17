@@ -2062,6 +2062,32 @@ def plan_today(user_id):
     }
 
 
+def today_plan(user_id):
+    """Today's plan entry with live completion state (which exercises are
+    already logged today) — drives the dashboard checklist."""
+    info = plan_today(user_id)
+    if not info:
+        return None
+    day = info["day"]
+    if day["is_rest"]:
+        info["total"] = None
+        info["done_count"] = None
+        return info
+    today_iso = datetime.now().date().isoformat()
+    with db_conn() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT exercise_key FROM exercise_logs "
+            "WHERE user_id = ? AND substr(logged_at, 1, 10) = ?",
+            (user_id, today_iso),
+        ).fetchall()
+    done_keys = {r["exercise_key"] for r in rows}
+    for s in day["sessions"]:
+        s["done"] = s["key"] in done_keys
+    info["total"] = len(day["sessions"])
+    info["done_count"] = sum(1 for s in day["sessions"] if s["done"])
+    return info
+
+
 def get_plan_prefs(user_id):
     with db_conn() as conn:
         row = conn.execute("SELECT * FROM plan_prefs WHERE user_id = ?", (user_id,)).fetchone()
@@ -2339,9 +2365,12 @@ def logout():
 # ---------------------------------------------------------------------------
 
 @app.route("/", methods=["GET", "POST"])
-@login_required
 def dashboard():
     uid = current_user_id()
+    if uid is None:
+        if request.method == "POST":
+            return redirect(url_for("login"))
+        return render_template("landing.html")
     if request.method == "POST":
         try:
             bw = form_float("bodyweight_kg", "Bodyweight", minv=20, maxv=500)
@@ -2465,7 +2494,7 @@ def dashboard():
         next_up=next_up,
         rank_prog={k: rank_progress(v) for k, v in stats.items()},
         heatmap=training_heatmap(uid) if has_data else [],
-        plan_today=plan_today(uid),
+        plan_today=today_plan(uid),
         chart_data={
             "stats": stats,
             "history": history,

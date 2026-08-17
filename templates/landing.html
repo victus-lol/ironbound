@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IRONBOUND · Train. Level up. Dominate.</title>
+<meta name="description" content="IRONBOUND turns real gym data into RPG-style stats, ranks, streaks, and a weekly training plan with diet charts.">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+<meta name="theme-color" content="#0b0f1a">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<script src="{{ url_for('static', filename='js/theme.js') }}?v=11"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=11">
+<meta name="color-scheme" content="dark light">
+</head>
+<body>
+<div class="bg-scene" aria-hidden="true">
+    <div class="bg-grid"></div>
+</div>
+
+<header class="landing-nav">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l7 2.8v6.1c0 4.8-3.1 8.2-7 10.6-3.9-2.4-7-5.8-7-10.6V5.3z"/><path d="M12.8 7.5l-3.4 4.6h2.4l-.6 4.4 3.4-4.6h-2.4z"/></svg></span>IRONBOUND</a>
+    <div class="landing-nav-actions">
+        <a class="btn btn-ghost btn-sm" href="/login">Log in</a>
+        <a class="btn btn-primary btn-sm" href="/signup">Start free</a>
+        <button class="icon-btn theme-toggle" id="themeToggle" type="button" title="Toggle day / night mode" aria-label="Toggle day / night mode">
+            <span class="theme-ico-sun" aria-hidden="true">☀️</span>
+            <span class="theme-ico-moon" aria-hidden="true">🌙</span>
+        </button>
+    </div>
+</header>
+
+<main>
+<section class="landing-hero">
+    <div class="landing-hero-inner">
+        <p class="landing-kicker">⚔️ Turn real numbers into stats</p>
+        <h1 class="landing-title">Train. Level up.<br><span class="grad">Dominate.</span></h1>
+        <p class="landing-sub">
+            IRONBOUND turns your real gym data — lifts, runs, field tests, body measurements —
+            into RPG-style stats. Score yourself against published standards, keep a streak
+            alive, and let a weekly plan + food chart tell you exactly what to do today.
+        </p>
+        <div class="landing-cta">
+            <a class="btn btn-primary btn-lg" href="/signup">Create your character →</a>
+            <a class="btn btn-ghost btn-lg" href="/login">Log in</a>
+        </div>
+        <p class="landing-meta">Free · local-first · your data stays in your ironbound.db</p>
+    </div>
+</section>
+
+<section class="landing-stats">
+    <div class="landing-stat"><b>STR</b><span>Strength</span></div>
+    <div class="landing-stat"><b>END</b><span>Endurance</span></div>
+    <div class="landing-stat"><b>AGI</b><span>Agility</span></div>
+    <div class="landing-stat"><b>VIT</b><span>Vitality</span></div>
+    <div class="landing-stat"><b>POW</b><span>Power</span></div>
+    <div class="landing-stat"><b>FLX</b><span>Flexibility</span></div>
+</section>
+
+<section class="landing-section">
+    <h2 class="landing-h2">Your data does the talking</h2>
+    <p class="landing-lead">No guesswork. Every stat is computed from real log entries and scored against published fitness standards.</p>
+    <div class="landing-grid">
+        <div class="landing-card">
+            <div class="landing-ico">📊</div>
+            <h3>Live stat cards</h3>
+            <p>Six RPG stats with scores, tiers, trends, and exactly how many points you need for the next rank.</p>
+        </div>
+        <div class="landing-card">
+            <div class="landing-ico">🔥</div>
+            <h3>Streaks &amp; badges</h3>
+            <p>A training-streak fire, weekly lifting volume, personal records, and 15 badges to earn.</p>
+        </div>
+        <div class="landing-card">
+            <div class="landing-ico">🗺️</div>
+            <h3>Next-tier coach</h3>
+            <p>See the gap to the next tier and get a "train your weakest stat" nudge that tells you what to log.</p>
+        </div>
+        <div class="landing-card">
+            <div class="landing-ico">📅</div>
+            <h3>Weekly plan</h3>
+            <p>A goal-based training timetable and a day-by-day food chart, allergy-aware and bodyweight-scaled.</p>
+        </div>
+        <div class="landing-card">
+            <div class="landing-ico">🏃</div>
+            <h3>Weather-smart runs</h3>
+            <p>The log-a-run page checks live weather and tells you "hit the gym" or "go for a run".</p>
+        </div>
+        <div class="landing-card">
+            <div class="landing-ico">📦</div>
+            <h3>Backup &amp; import</h3>
+            <p>One-click JSON/CSV export. Your data lives in a single local SQLite file you control.</p>
+        </div>
+    </div>
+</section>
+
+<section class="landing-section landing-alt">
+    <div class="landing-two">
+        <div>
+            <p class="landing-kicker">How it works</p>
+            <h2 class="landing-h2">Log it. Score it. Beat it.</h2>
+            <ol class="landing-steps">
+                <li><b>Log a set, run, or field test.</b> Back-date it if you did it yesterday.</li>
+                <li><b>Watch the stats move.</b> Your level, rank, and six stats recompute instantly.</li>
+                <li><b>Follow today's plan.</b> The dashboard checklist shows what's left to log today.</li>
+            </ol>
+            <a class="btn btn-primary" href="/signup">Get started →</a>
+        </div>
+        <div class="landing-ring-wrap">
+            <div class="hero-ring">
+                <svg viewBox="0 0 120 120">
+                    <circle class="ring-track" cx="60" cy="60" r="54"/>
+                    <circle class="ring-prog ring-outer" cx="60" cy="60" r="54" stroke-dasharray="305.3 339.29"/>
+                    <circle class="ring-track" cx="60" cy="60" r="40"/>
+                    <circle class="ring-prog ring-inner" cx="60" cy="60" r="40" stroke-dasharray="188.5 251.33"/>
+                </svg>
+                <div class="hero-ring-center"><b>B</b><span>Rank up</span></div>
+            </div>
+            <div class="rank-caption">E → D → C → B → A → S</div>
+        </div>
+    </div>
+</section>
+
+<section class="landing-section">
+    <h2 class="landing-h2">Made to stay in your pocket</h2>
+    <p class="landing-lead">Install it like an app on your phone, switch between day and night mode, and keep your streak alive anywhere.</p>
+    <div class="landing-cta">
+        <a class="btn btn-primary btn-lg" href="/signup">Create your character →</a>
+        <a class="btn btn-ghost btn-lg" href="/login">Log in</a>
+    </div>
+</section>
+</main>
+
+<footer class="landing-footer">
+    <span>⚔ IRONBOUND — turn real numbers into stats</span>
+    <span><a href="/login">Log in</a> · <a href="/signup">Create account</a></span>
+</footer>
+
+<div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=11"></script>
+</body>
+</html>

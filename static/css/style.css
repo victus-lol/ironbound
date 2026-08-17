@@ -1966,3 +1966,70 @@ textarea:focus-visible,
 @media (max-width: 560px) {
     .macro-strip { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* --- Today's plan checklist (state-change feedback) --- */
+.today-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 12px; }
+.today-progress-label { font-size: 12px; font-weight: 700; color: var(--text-2); white-space: nowrap; }
+.today-progress-bar { flex: 1; height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.today-progress-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--green), var(--cyan)); transition: width 0.6s ease; }
+.today-complete { display: flex; gap: 8px; align-items: center; font-size: 13.5px; font-weight: 600; color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); border: 1px solid color-mix(in srgb, var(--green) 35%, transparent); border-radius: 12px; padding: 9px 12px; margin-bottom: 12px; }
+.today-session { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; transition: border-color 0.3s ease, opacity 0.3s ease, background 0.3s ease; }
+.today-session-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.today-session-main b { font-size: 14px; }
+.today-session.done { border-color: color-mix(in srgb, var(--green) 40%, transparent); background: color-mix(in srgb, var(--green) 8%, transparent); }
+.today-session.done b { text-decoration: line-through; opacity: 0.55; }
+.done-check { width: 20px; height: 20px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--green); color: #06231c; font-size: 12px; font-weight: 900; }
+.done-tag { font-size: 12px; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* --- Public landing page (Pulse-style, product-led) --- */
+.landing-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 1040px; margin: 0 auto; padding: 22px 20px; }
+.landing-nav-actions { display: flex; align-items: center; gap: 8px; }
+.landing-hero { max-width: 1040px; margin: 0 auto; padding: 48px 20px 24px; text-align: center; }
+.landing-hero-inner { max-width: 720px; margin: 0 auto; }
+.landing-kicker { font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--cyan); }
+.landing-title { margin: 12px 0 14px; font-family: "Sora", sans-serif; font-size: clamp(38px, 7vw, 64px); font-weight: 800; line-height: 1.06; letter-spacing: -1.5px; }
+.landing-title .grad { background: linear-gradient(90deg, var(--cyan), var(--green)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.landing-sub { margin: 0 auto 26px; max-width: 620px; color: var(--text-2); font-size: 16.5px; line-height: 1.6; }
+.landing-cta { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.landing-meta { margin-top: 16px; font-size: 12.5px; color: var(--text-3, var(--text-2)); }
+.landing-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-width: 1040px; margin: 26px auto 0; padding: 0 20px; }
+.landing-stat { border: 1px solid var(--border); border-radius: 14px; padding: 14px 8px; text-align: center; background: var(--surface-solid); }
+.landing-stat b { display: block; font-family: "Sora", sans-serif; font-size: 18px; letter-spacing: 1px; color: var(--cyan); }
+.landing-stat span { font-size: 11px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.6px; }
+.landing-section { max-width: 1040px; margin: 0 auto; padding: 56px 20px 20px; }
+.landing-alt { }
+.landing-h2 { font-family: "Sora", sans-serif; font-size: clamp(26px, 4vw, 34px); font-weight: 800; letter-spacing: -0.8px; margin: 0 0 10px; }
+.landing-lead { max-width: 640px; color: var(--text-2); font-size: 15.5px; line-height: 1.6; margin: 0 0 26px; }
+.landing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.landing-card { border: 1px solid var(--border); border-radius: 16px; padding: 20px; background: var(--surface-solid); transition: transform 0.2s ease, border-color 0.2s ease; }
+.landing-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--cyan) 45%, transparent); }
+.landing-ico { font-size: 22px; }
+.landing-card h3 { margin: 10px 0 6px; font-size: 16.5px; font-weight: 700; }
+.landing-card p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text-2); }
+.landing-two { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 32px; align-items: center; }
+.landing-steps { margin: 0 0 22px; padding: 0 0 0 20px; display: grid; gap: 10px; color: var(--text-2); font-size: 15px; line-height: 1.55; }
+.landing-steps b { color: var(--text-1); }
+.landing-ring-wrap { display: grid; justify-items: center; gap: 10px; }
+.hero-ring { position: relative; width: 190px; height: 190px; }
+.hero-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: var(--border); stroke-width: 10; }
+.ring-prog { fill: none; stroke-width: 10; stroke-linecap: round; }
+.ring-outer { stroke: var(--cyan); }
+.ring-inner { stroke: var(--green); }
+.hero-ring-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.hero-ring-center b { font-family: "Sora", sans-serif; font-size: 44px; line-height: 1; color: var(--gold, var(--cyan)); }
+.hero-ring-center span { font-size: 12px; font-weight: 800; color: var(--text-2); text-transform: uppercase; letter-spacing: 1px; }
+.rank-caption { font-size: 12.5px; font-weight: 700; color: var(--text-2); letter-spacing: 1.5px; }
+.landing-footer { max-width: 1040px; margin: 40px auto 0; padding: 22px 20px 34px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); }
+.landing-footer a { color: var(--text-1); font-weight: 600; text-decoration: none; }
+.landing-footer a:hover { color: var(--cyan); }
+@media (max-width: 860px) {
+    .landing-stats { grid-template-columns: repeat(3, 1fr); }
+    .landing-grid { grid-template-columns: repeat(2, 1fr); }
+    .landing-two { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+    .landing-grid { grid-template-columns: 1fr; }
+    .landing-stats { grid-template-columns: repeat(2, 1fr); }
+    .landing-nav { flex-wrap: wrap; justify-content: center; }
+}

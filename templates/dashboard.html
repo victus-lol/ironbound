@@ -123,14 +123,30 @@
     {% if plan_today.day.is_rest %}
     <div class="today-rest">😴 Rest day — {{ plan_today.day.rec[1] }}: {{ plan_today.day.rec[2] }}</div>
     {% else %}
+    {% set pct = (plan_today.done_count / plan_today.total * 100)|round|int if plan_today.total else 0 %}
+    <div class="today-progress" role="progressbar" aria-valuenow="{{ plan_today.done_count }}" aria-valuemin="0" aria-valuemax="{{ plan_today.total }}" aria-label="Today's plan progress">
+        <span class="today-progress-label">{{ plan_today.done_count }}/{{ plan_today.total }} done today</span>
+        <div class="today-progress-bar"><i style="width: {{ pct }}%;"></i></div>
+    </div>
+    {% if plan_today.done_count == plan_today.total %}
+    <div class="today-complete">🎉 All planned exercises logged. The ring is yours — keep the streak alive.</div>
+    {% endif %}
     <div class="today-sessions">
         {% for s in plan_today.day.sessions %}
-        <div class="today-session">
+        <div class="today-session {{ 'done' if s.done else '' }}">
             <div class="today-session-main">
+                {% if s.done %}
+                <span class="done-check" aria-hidden="true">✓</span>
+                {% else %}
                 <span class="chip {{ s.stat|lower }}">{{ s.stat }}</span>
+                {% endif %}
                 <b>{{ s.name }}</b>
             </div>
+            {% if s.done %}
+            <span class="done-tag">logged</span>
+            {% else %}
             <a class="btn btn-primary btn-sm" href="/log/exercise?exercise={{ s.key|urlencode }}">Log it →</a>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

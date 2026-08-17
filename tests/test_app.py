@@ -119,11 +119,29 @@ class TestIronbound(unittest.TestCase):
         self.assertEqual(r.status_code, 400)
 
     def test_protected_routes_require_login(self):
-        for path in ["/", "/compare", "/benchmarks", "/exercises", "/plan", "/log", "/logs", "/settings",
+        for path in ["/compare", "/benchmarks", "/exercises", "/plan", "/log", "/logs", "/settings",
                      "/achievements",
                      "/log/strength", "/log/cardio", "/log/body", "/log/performance"]:
             r = self.app.test_client().get(path)
             self.assertEqual(r.status_code, 302, f"{path} should redirect to login")
+
+    def test_landing_page_public(self):
+        c = self.app.test_client()
+        r = c.get("/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn(b"IRONBOUND", r.data)
+        self.assertIn(b"Create your character", r.data)
+        self.assertIn(b"/signup", r.data)
+        self.assertIn(b"/login", r.data)
+        # the app shell must not leak to anonymous visitors
+        self.assertNotIn(b"logout", r.data.lower())
+
+    def test_landing_hides_when_logged_in(self):
+        c = self.login()
+        r = c.get("/")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn(b"Create your character", r.data)
+        self.assertIn(b"dashboard", r.data.lower())
 
     def test_input_validation_no_crash(self):
         c = self.login()
@@ -744,6 +762,32 @@ class TestIronbound(unittest.TestCase):
         if not t["day"]["is_rest"]:
             for s in t["day"]["sessions"]:
                 self.assertTrue(app_module.EXERCISE_BY_KEY.get(s["key"]))
+
+    def test_today_checklist_tracks_logged_exercises(self):
+        c = self.app.test_client()
+        self.signup(c, {"username": "check_guy", "password": "planPass1", "gender": "male"})
+        self.post(c, "/plan", {"goal": "muscle_building", "training_days": 3,
+                               "rest_days": [0, 3, 5, 6], "diet_type": "veg"})
+        info = app_module.today_plan(self.user_id("check_guy"))
+        self.assertIsNotNone(info)
+        if info["day"]["is_rest"]:
+            self.assertIsNone(info["total"])
+            return
+        self.assertEqual(info["done_count"], 0)
+        self.assertGreater(info["total"], 0)
+        first = info["day"]["sessions"][0]
+        key = first["key"]
+        self.post(c, "/log/exercise", {"exercise_key": key, "sets": 3, "reps": 5, "weight_kg": 60})
+        info2 = app_module.today_plan(self.user_id("check_guy"))
+        done = {s["key"] for s in info2["day"]["sessions"] if s.get("done")}
+        self.assertIn(key, done)
+        self.assertEqual(info2["done_count"], len(done))
+        # dashboard renders the checklist with progress + completed state
+        html = c.get("/").get_data(as_text=True)
+        self.assertIn("today-progress", html)
+        self.assertIn("done today", html)
+        self.assertIn("done-check", html)
+        self.assertIn("logged", html)
 
     def test_plan_roundtrip(self):
         c = self.app.test_client()
