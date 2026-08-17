@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Edit Exercise{% else %}Log Exercise{% endif %}{% endblock %}
+{% from "_help.html" import stat_help with context %}
+
+{% block content %}
+
+{% include "_log_header.html" %}
+
+{% set sel_key = log['exercise_key'] if log else selected if (selected is defined and selected) else '' %}
+{% set sel = none %}
+{% for group in exercise_library %}{% for ex in group %}{% if sel_key == ex.key %}{% set sel = ex %}{% endif %}{% endfor %}{% endfor %}
+
+<div class="grid form-grid">
+    <div class="card animate">
+        <h3 class="card-title">{% if editing %}✏️ Edit this session{% else %}🎯 Log an exercise{% endif %}</h3>
+        <form id="exerciseForm" method="POST"
+              action="{% if log %}{{ url_for('edit_log', log_type='exercise', log_id=log.id) }}{% else %}{{ url_for('log_exercise') }}{% endif %}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="exerciseKey">Exercise <span class="muted" style="font-weight:400;">(any from the training library)</span></label>
+            <select name="exercise_key" id="exerciseKey">
+                {% for group in exercise_library %}
+                <optgroup label="Feeds {{ group[0].feeds_stat }}">
+                    {% for ex in group %}
+                    <option value="{{ ex.key }}" data-times="{{ '1' if ex.times else '0' }}"
+                            {% if sel_key == ex.key %}selected{% endif %}>{{ ex.name }}</option>
+                    {% endfor %}
+                </optgroup>
+                {% endfor %}
+            </select>
+            <p class="field-hint" id="exerciseHint">{% if sel %}{{ sel.home }}{% else %}Pick an exercise above — the form auto-fits whether it's rep-based or timed.{% endif %}</p>
+
+            <div class="mode-tabs" role="tablist" aria-label="Logging mode">
+                <button type="button" class="mode-tab active" id="modeRep" role="tab" aria-selected="true">Sets × reps</button>
+                <button type="button" class="mode-tab" id="modeTimed" role="tab" aria-selected="false">By duration</button>
+            </div>
+
+            <div id="repFields">
+                <label for="sets">Sets</label>
+                <input type="number" min="1" max="50" name="sets" id="sets" placeholder="e.g. 3"
+                       value="{{ log['sets'] if (log and not log['minutes']) else (1 if not log) }}">
+                <label for="reps">Reps <span class="muted" style="font-weight:400;">per set</span></label>
+                <input type="number" min="1" max="1000" name="reps" id="reps" placeholder="e.g. 8"
+                       value="{{ log['reps'] if (log and not log['minutes']) else '' }}">
+                <label for="weight_kg">Weight (kg) <span class="muted" style="font-weight:400;">leave blank if bodyweight</span></label>
+                <input type="number" step="0.5" min="1" max="1000" name="weight_kg" id="weight_kg" placeholder="e.g. 60"
+                       value="{{ log['weight_kg'] if (log and not log['minutes']) else '' }}">
+            </div>
+
+            <div id="timedFields" style="display:none;">
+                <label for="minutes">Duration (minutes)</label>
+                <input type="number" step="1" min="0.5" max="1440" name="minutes" id="minutes" placeholder="e.g. 25"
+                       value="{{ log['minutes'] if log else '' }}">
+            </div>
+
+            <label for="logged_at">When</label>
+            <input type="datetime-local" name="logged_at" id="logged_at"
+                   value="{{ log['logged_at'][:16] if log and log['logged_at'] else default_logged_at }}">
+            <div class="form-row-actions">
+                <button class="btn btn-primary" type="submit" style="margin-top:16px;">
+                    {% if editing %}Save changes{% else %}Log exercise{% endif %}
+                </button>
+                {% if editing %}<a class="btn btn-ghost" href="/logs" style="margin-top:16px;">Cancel</a>{% endif %}
+            </div>
+            <div class="preview" data-preview></div>
+            {% if error %}<div class="auth-error" role="alert">{{ error }}</div>{% endif %}
+        </form>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">How it's scored</h3>
+        <div class="metric-row"><div class="row-top"><span class="metric-name">Training credit {{ stat_help('STR', 'l', 'Shown on your dashboard as "trn +N".') }}</span></div><div class="muted">Every exercise you log adds small credit to the stat it targets (shown on the card). Measured PRs and tests still dominate your score.</div></div>
+        <div class="metric-row"><div class="row-top"><span class="metric-name">What counts</span><span class="chip gold">weekly</span></div><div class="muted">Reps, weight, and sets (or minutes of timed work). Bodyweight exercises count too — no weight needed.</div></div>
+        <div class="metric-row"><div class="row-top"><span class="metric-name">Dips &amp; expires</span></div><div class="muted">Credit is based on the last 7 days and resets over time, so consistent training is what keeps it high.</div></div>
+        <a class="btn btn-ghost" href="/exercises" style="width:100%; justify-content:center; margin-top:6px;">Browse the full library →</a>
+    </div>
+</div>
+
+{% endblock %}

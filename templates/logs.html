@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}My Logs{% endblock %}
+{% block content %}
+
+<div class="card animate">
+    <div class="logs-head">
+        <div>
+            <div class="hero-kicker">History</div>
+            <h2 class="hero-title" style="font-size:27px; margin-top:2px;">My logs</h2>
+            <p class="muted">Everything you've recorded — edit or delete anything you entered wrong.</p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <form method="POST" action="/import" enctype="multipart/form-data" class="import-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="btn btn-ghost btn-sm" for="importFile" style="margin:0; cursor:pointer;">⬆️ Import</label>
+                <input type="file" id="importFile" name="file" accept="application/json,.json" hidden>
+            </form>
+            <a class="btn btn-ghost btn-sm" href="/export">⬇️ Export (JSON)</a>
+            <a class="btn btn-ghost btn-sm" href="/export.csv">📄 Export (CSV)</a>
+            <a class="btn btn-primary" href="/log">+ Log new</a>
+        </div>
+    </div>
+</div>
+
+{% if logs %}
+<div class="card" style="margin-top:16px;">
+    {% for item in logs %}
+    <div class="log-row">
+        <div class="log-row-icon {{ item.cls }}">{{ item.icon }}</div>
+        <div class="log-row-main">
+            <div class="log-row-summary">{{ item.summary }}</div>
+            <div class="log-row-date">{{ item.logged_at[:16].replace('T', ' · ') }}</div>
+        </div>
+        <span class="chip {{ item.cls }}">{{ item.type|capitalize }}</span>
+        <div class="log-row-actions">
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('edit_log', log_type=item.type, log_id=item.id) }}">✏️ Edit</a>
+            <form method="POST" action="{{ url_for('delete_log_route', log_type=item.type, log_id=item.id) }}"
+                  onsubmit="return confirm('Delete this entry? This can\u2019t be undone.');" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-danger btn-sm" type="submit">🗑 Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if total > per_page %}
+<nav class="pager" aria-label="Pagination">
+    {% set pages = (total / per_page) | round(0, 'ceil') | int %}
+    {% if page > 1 %}
+    <a class="time-pill" href="?page={{ page - 1 }}">← Prev</a>
+    {% endif %}
+    <span class="pager-status">{{ ((page - 1) * per_page) + 1 }}–{{ [page * per_page, total] | min }} of {{ total }}</span>
+    {% if page < pages %}
+    <a class="time-pill" href="?page={{ page + 1 }}">Next →</a>
+    {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card" style="margin-top:16px;">
+    <div class="empty">
+        <div class="big">📭</div>
+        <h3>No logs yet</h3>
+        <p>Everything you record — sets, runs, measurements, field tests — will show up here where you can edit or remove it.</p>
+        <div class="actions">
+            <a class="btn btn-primary" href="/log">Log your first entry</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

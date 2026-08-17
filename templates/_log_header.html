@@ -1,0 +1,16 @@
+{% from "_help.html" import stat_help with context %}
+<div class="card log-hero animate">
+    <div class="log-hero-main">
+        <div class="log-hero-icon">{{ header.icon }}</div>
+        <div>
+            <div class="hero-kicker">{% if editing %}Editing an entry{% else %}New entry{% endif %}</div>
+            <h2 class="log-hero-title">{% if editing %}Edit your {% endif %}{{ header.title }} log</h2>
+            <p class="muted">{{ header.blurb }}</p>
+        </div>
+    </div>
+    <div class="log-hero-stat">
+        <span class="chip {{ header.stat|lower }}">{{ header.stat }} — {{ header.stat_score if header.stat_score is not none else '—' }}/100 {{ stat_help(header.stat, 'l') }}</span>
+        <span class="muted">feeds your {{ header.stat }} stat</span>
+        {% if editing %}<a class="muted inline" href="/logs">← back to My Logs</a>{% endif %}
+    </div>
+</div>

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Standards{% endblock %}
+{% block content %}
+
+<div class="card animate">
+    <h3 class="card-title">Fitness standards</h3>
+    <p class="muted" style="margin:0 0 14px;">
+        The reference tables behind your scores. Lifts are <b>1RM ÷ bodyweight</b>, VO₂max in
+        <b>ml/kg/min</b>, field tests in <b>cm</b> or <b>s</b> (lower is better for the sprint), body fat
+        in <b>%</b>. Where you fall between tiers becomes your 0–100 score.
+        <b style="color:var(--amber);">The "You" column</b> is your current value.
+    </p>
+    <div class="chips">
+        <span class="chip">⬜ Average</span>
+        <span class="chip green">✅ Healthy</span>
+        <span class="chip purple">🔥 Enthusiast</span>
+        <span class="chip gold">🏆 Pro</span>
+    </div>
+</div>
+
+{% for gender_label, table in [("Male", male), ("Female", female)] %}
+<div class="card" style="margin-top:16px;">
+    <h3 class="card-title">{{ gender_label }}</h3>
+    <div class="table-wrap">
+        <table class="tiers">
+            <tr>
+                <th>Metric</th>
+                <th style="color:var(--amber);">You</th>
+                <th class="t-se">Average</th>
+                <th class="t-he">Healthy</th>
+                <th class="t-en">Enthusiast</th>
+                <th class="t-pro">Pro</th>
+            </tr>
+            {% for key, name, unit in [
+                ("bench_ratio", "Bench", "× BW"),
+                ("squat_ratio", "Squat", "× BW"),
+                ("deadlift_ratio", "Deadlift", "× BW"),
+                ("vo2max", "VO₂max", "ml/kg/min"),
+                ("vertical_jump", "Vertical jump", "cm"),
+                ("sprint_40m", "40 m sprint", "s"),
+                ("sit_and_reach", "Sit & reach", "cm"),
+                ("body_fat", "Body fat", "%"),
+            ] %}
+            <tr>
+                <td class="name">{{ name }}</td>
+                <td class="you">{{ you[key] if you[key] is not none else "—" }}</td>
+                <td class="t-se">{{ table[key]["sedentary"] }}</td>
+                <td class="t-he">{{ table[key]["healthy"] }}</td>
+                <td class="t-en">{{ table[key]["enthusiast"] }}</td>
+                <td class="t-pro">{{ table[key]["pro"] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endfor %}
+
+<p class="hint">
+    Sourced from aggregated strength-standard datasets (StrengthLevel / NSCA), ACSM / Cooper Institute
+    VO₂max norms, ACE body-fat categories, and general athletic field-test references (vertical jump,
+    40 m sprint, sit &amp; reach). Population reference points, not individual targets.
+</p>
+
+{% endblock %}

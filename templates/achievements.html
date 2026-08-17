@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Achievements{% endblock %}
+{% block page_title %}Achievements{% endblock %}
+{% block content %}
+
+<div class="grid three" style="margin-top:0;">
+    <div class="card">
+        <div class="card-head"><span class="card-title">🔥 Training streak</span></div>
+        <div class="ach-big">{{ streak.current }}</div>
+        <div class="muted">days in a row</div>
+        {% if streak.best > streak.current %}
+        <div class="muted">Personal best: {{ streak.best }} days</div>
+        {% else %}
+        <div class="muted">Keep it going — best {{ streak.best }} days</div>
+        {% endif %}
+        <p class="hint" style="margin-top:10px;">Any log keeps the streak alive. Log at least once a day and it grows.</p>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><span class="card-title">💪 This week</span></div>
+        <div class="ach-big">{{ '{:,.0f}'.format(weekly.volume) }}</div>
+        <div class="muted">kg lifted this week</div>
+        <div class="chip" style="margin-top:12px;">{{ weekly.sessions }} strength session{{ 's' if weekly.sessions != 1 }}</div>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><span class="card-title">🏆 Records</span></div>
+        <div class="ach-big">{{ ctx.pr_count }}</div>
+        <div class="muted">personal records held</div>
+        <div class="chip gold" style="margin-top:12px;">{{ earned_count }}/{{ badge_total }} badges earned</div>
+    </div>
+</div>
+
+<div class="grid two" style="margin-top:16px;">
+    <div class="card">
+        <h3 class="card-title">Personal records</h3>
+        {% if personal_records %}
+        <div class="rec-list">
+            {% for key, rec in personal_records.items() %}
+            <div class="rec-row">
+                <span class="rec-name">
+                    {% if key == 'lift_bench' %}🏋️ Bench 1RM
+                    {% elif key == 'lift_squat' %}🦵 Squat 1RM
+                    {% elif key == 'lift_deadlift' %}🏋️ Deadlift 1RM
+                    {% elif key == 'vo2max' %}🏃 VO₂max
+                    {% elif key == 'longest_run' %}🗺️ Longest run
+                    {% elif key == 'vertical_jump' %}🔥 Vertical jump
+                    {% elif key == 'sprint_40m' %}⚡ 40 m sprint
+                    {% elif key == 'sit_and_reach' %}🤸 Sit &amp; reach
+                    {% else %}{{ key }}{% endif %}
+                </span>
+                <span class="rec-val">
+                    {% if key == 'vo2max' %}{{ rec.value }} ml/kg/min
+                    {% elif key == 'longest_run' %}{{ rec.value }} km
+                    {% elif key == 'vertical_jump' %}{{ rec.value }} cm
+                    {% elif key == 'sprint_40m' %}{{ rec.value }} s
+                    {% elif key == 'sit_and_reach' %}{{ rec.value }} cm
+                    {% else %}{{ rec.value }} kg{% endif %}
+                    {% if rec.text %}<span class="rec-text muted">{{ rec.text }}{% if rec.date %} · {{ rec.date }}{% endif %}</span>{% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty" style="padding:18px 8px;">
+            <div class="big">🏔️</div>
+            <p>No records yet. Every lift, run, and field test you log becomes a record worth beating.</p>
+            <div class="actions">
+                <a class="btn btn-primary" href="/log/strength">Set your first PR</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">Lifting volume <span class="muted" style="font-weight:400;">· last 8 weeks</span></h3>
+        {% set maxv = volume_series | map(attribute='volume') | max or 1 %}
+        {% if maxv > 0 %}
+        <div class="vol-bars">
+            {% for w in volume_series %}
+            <div class="vol-col">
+                <div class="vol-bar-wrap">
+                    {% if w.volume > 0 %}
+                    <div class="vol-bar {% if w.is_current %}current{% endif %}"
+                         style="height: {{ (w.volume / maxv * 120)|round|int + 6 }}px;"
+                         title="{{ '{:,.0f}'.format(w.volume) }} kg · {{ w.sessions }} sessions"></div>
+                    {% else %}<div class="vol-bar empty" style="height:6px;"></div>{% endif %}
+                </div>
+                <span class="vol-label">{{ w.label }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="hint" style="margin-top:12px;">Total kg moved (weight × reps) per week. A growing bar means you're progressively overloading.</p>
+        {% else %}
+        <div class="empty" style="padding:18px 8px;">
+            <div class="big">📦</div>
+            <p>Log strength sets to start filling your volume chart.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+    <div class="card-head">
+        <span class="card-title">Badges</span>
+        <span class="muted">{{ earned_count }}/{{ badge_total }} unlocked</span>
+    </div>
+    <div class="badge-grid">
+        {% for b in badges %}
+        <div class="badge-card {% if b.earned %}earned tier-{{ b.tier }}{% else %}locked{% endif %}" title="{{ b.name }} — {{ b.desc }}">
+            <div class="badge-ico" aria-hidden="true">{{ b.icon if b.earned else '🔒' }}</div>
+            <div class="badge-name">{{ b.name }}</div>
+            <div class="badge-desc">{{ b.desc }}</div>
+            {% if b.earned %}<span class="badge-tag">EARNED</span>{% else %}<span class="badge-tag muted">LOCKED</span>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

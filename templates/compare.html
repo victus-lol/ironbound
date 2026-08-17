@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Compare{% endblock %}
+{% block content %}
+
+<div class="card animate">
+    <h3 class="card-title">Compare to a target</h3>
+    <p class="muted" style="margin:0 0 16px;">
+        Pick a tier and see exactly how far you are from reaching it — in kg, ml/kg/min, cm, seconds, and body-fat %.
+    </p>
+    <div class="tier-tabs">
+        {% for tier in ["sedentary", "healthy", "enthusiast", "pro"] %}
+        <form method="POST" style="margin:0; display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" name="tier" value="{{ tier }}"
+                    class="tier-tab {% if target_tier == tier %}active{% endif %}">
+                {{ tier_labels[tier] }}
+            </button>
+        </form>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+    {% if gaps %}
+        {% for lift, label, icon in [("bench", "Bench Press", "🏋️"), ("squat", "Squat", "🦵"), ("deadlift", "Deadlift", "🏋️")] %}
+            {% if gaps[lift] %}
+            <div class="metric-row">
+                <div class="row-top">
+                    <div>
+                        <span class="metric-name">{{ icon }} {{ label }}</span>
+                        <span class="metric-detail">{{ gaps[lift].current_kg }}kg → {{ gaps[lift].target_kg }}kg</span>
+                    </div>
+                    {% if gaps[lift].met %}<span class="chip green">✓ Met</span>
+                    {% else %}<span class="chip red">+{{ gaps[lift].gap_kg }} kg</span>{% endif %}
+                </div>
+                <div class="bar">
+                    <div class="bar-fill {% if gaps[lift].met %}vit{% else %}red{% endif %}"
+                         style="width: {{ (gaps[lift].current_kg / gaps[lift].target_kg * 100)|round|int if gaps[lift].target_kg else 0 }}%;"></div>
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+
+        {% if gaps.vo2max %}
+        <div class="metric-row">
+            <div class="row-top">
+                <div>
+                    <span class="metric-name">🏃 VO₂max</span>
+                    <span class="metric-detail">{{ gaps.vo2max.current }} → {{ gaps.vo2max.target }} ml/kg/min</span>
+                </div>
+                {% if gaps.vo2max.met %}<span class="chip green">✓ Met</span>
+                {% else %}<span class="chip red">+{{ gaps.vo2max.gap }}</span>{% endif %}
+            </div>
+            <div class="bar">
+                <div class="bar-fill {% if gaps.vo2max.met %}vit{% else %}amber{% endif %}"
+                     style="width: {{ (gaps.vo2max.current / gaps.vo2max.target * 100)|round|int if gaps.vo2max.target else 0 }}%;"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if gaps.vertical_jump %}
+        <div class="metric-row">
+            <div class="row-top">
+                <div>
+                    <span class="metric-name">🔥 Vertical jump</span>
+                    <span class="metric-detail">{{ gaps.vertical_jump.current }}cm → {{ gaps.vertical_jump.target }}cm</span>
+                </div>
+                {% if gaps.vertical_jump.met %}<span class="chip green">✓ Met</span>
+                {% else %}<span class="chip red">+{{ gaps.vertical_jump.gap }} cm</span>{% endif %}
+            </div>
+            <div class="bar">
+                <div class="bar-fill {% if gaps.vertical_jump.met %}vit{% else %}red{% endif %}"
+                     style="width: {{ (gaps.vertical_jump.current / gaps.vertical_jump.target * 100)|round|int if gaps.vertical_jump.target else 0 }}%;"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if gaps.sprint %}
+        <div class="metric-row">
+            <div class="row-top">
+                <div>
+                    <span class="metric-name">⚡ 40 m sprint</span>
+                    <span class="metric-detail">{{ gaps.sprint.current }}s → {{ gaps.sprint.target }}s</span>
+                </div>
+                {% if gaps.sprint.met %}<span class="chip green">✓ Met</span>
+                {% else %}<span class="chip red">−{{ gaps.sprint.gap }} s</span>{% endif %}
+            </div>
+            <div class="bar">
+                <div class="bar-fill {% if gaps.sprint.met %}vit{% else %}amber{% endif %}"
+                     style="width: {{ (gaps.sprint.target / gaps.sprint.current * 100)|round|int if gaps.sprint.current else 0 }}%;"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if gaps.sit_and_reach %}
+        <div class="metric-row">
+            <div class="row-top">
+                <div>
+                    <span class="metric-name">🤸 Sit &amp; reach</span>
+                    <span class="metric-detail">{{ gaps.sit_and_reach.current }}cm → {{ gaps.sit_and_reach.target }}cm</span>
+                </div>
+                {% if gaps.sit_and_reach.met %}<span class="chip green">✓ Met</span>
+                {% else %}<span class="chip red">+{{ gaps.sit_and_reach.gap }} cm</span>{% endif %}
+            </div>
+            <div class="bar">
+                <div class="bar-fill {% if gaps.sit_and_reach.met %}vit{% else %}red{% endif %}"
+                     style="width: {{ (gaps.sit_and_reach.current / gaps.sit_and_reach.target * 100)|round|int if gaps.sit_and_reach.target else 0 }}%;"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if gaps.body_fat and gaps.body_fat.current %}
+        <div class="metric-row">
+            <div class="row-top">
+                <div>
+                    <span class="metric-name">⚖️ Body fat</span>
+                    <span class="metric-detail">{{ gaps.body_fat.current }}% → under {{ gaps.body_fat.target }}%</span>
+                </div>
+                {% if gaps.body_fat.met %}<span class="chip green">✓ Met</span>
+                {% else %}<span class="chip red">lose {{ gaps.body_fat.gap }}%</span>{% endif %}
+            </div>
+            <div class="bar">
+                <div class="bar-fill {% if gaps.body_fat.met %}vit{% else %}red{% endif %}"
+                     style="width: {{ (gaps.body_fat.target / gaps.body_fat.current * 100)|round|int if gaps.body_fat.current else 0 }}%;"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <p class="hint" style="margin-top:16px;">
+            Need a plan? The <a href="/exercises">Exercises</a> library shows what to train for each stat —
+            gym and no-gym. A future version can auto-build your plan from these exact gaps.
+        </p>
+    {% else %}
+        <div class="empty">
+            <div class="big">📊</div>
+            <h3>Nothing to compare yet</h3>
+            <p>Log your bodyweight and at least one metric first, then come back to see your gaps.</p>
+            <div class="actions">
+                <a class="btn btn-primary" href="/log/strength">Log a strength set</a>
+                <a class="btn btn-ghost" href="/log/body">Log body metrics</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

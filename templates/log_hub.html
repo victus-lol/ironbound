@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Log{% endblock %}
+{% block content %}
+
+<div class="card animate">
+    <div class="logs-head">
+        <div>
+            <div class="hero-kicker">Activity</div>
+            <h2 class="hero-title" style="font-size:27px; margin-top:2px;">What are you logging today?</h2>
+            <p class="muted">Pick an activity — each one feeds different stats on your character sheet. Hover the <b>ⓘ</b> icons on your dashboard to see what each stat means.</p>
+        </div>
+        <a class="btn btn-ghost" href="/logs">📋 View my logs</a>
+    </div>
+</div>
+
+<div class="hub-grid">
+    {% for card in [
+        {"href": "/log/strength", "icon": "🏋️", "cls": "str", "title": "Strength set",
+         "desc": "Bench, squat, or deadlift — weight × reps becomes an estimated 1RM.", "stat": "STR", "stat_label": "Strength"},
+        {"href": "/log/cardio", "icon": "🏃", "cls": "end", "title": "Cardio run",
+         "desc": "Distance + time, converted to a Cooper-test VO₂max.", "stat": "END", "stat_label": "Endurance"},
+        {"href": "/log/body", "icon": "📏", "cls": "vit", "title": "Body metrics",
+         "desc": "Waist & neck → body-fat %, which drives your Vitality.", "stat": "VIT", "stat_label": "Vitality"},
+        {"href": "/log/performance", "icon": "🔥", "cls": "pow", "title": "Field tests",
+         "desc": "Vertical jump, 40 m sprint, sit & reach — three stats in one go.", "stat": "POW", "stat_label": "Power"},
+        {"href": "/log/exercise", "icon": "🎯", "cls": "ex", "title": "Exercise (any)",
+         "desc": "Anything else from the training library — log it daily and it adds training credit to its stat.", "stat": "STR", "stat_label": "Strength"},
+    ] %}
+    <a class="hub-card {{ card.cls }}" href="{{ card.href }}">
+        <div class="hub-card-icon">{{ card.icon }}</div>
+        <div class="hub-card-title">{{ card.title }}</div>
+        <div class="hub-card-desc">{{ card.desc }}</div>
+        <div class="hub-card-foot">
+            <span class="chip {{ card.cls }}">feeds {{ card.stat }}</span>
+            <span class="hub-card-go">Log →</span>
+        </div>
+        <div class="hub-card-stat">
+            {% set score = stats[card.stat] if stats else none %}
+            {% if score is not none %}{{ card.stat }} <b>{{ score }}</b>/100
+            {% else %}{{ card.stat }} not scored yet{% endif %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+<div class="card" style="margin-top:16px;">
+    <div class="logs-head" style="margin-bottom:6px;">
+        <h3 class="card-title" style="margin-bottom:0;">Recent activity</h3>
+        <a class="muted inline" href="/logs">view all</a>
+    </div>
+    {% if recent %}
+        {% for item in recent %}
+        <div class="log-row">
+            <div class="log-row-icon {{ item.cls }}">{{ item.icon }}</div>
+            <div class="log-row-main">
+                <div class="log-row-summary">{{ item.summary }}</div>
+                <div class="log-row-date">{{ item.logged_at[:16].replace('T', ' · ') }}</div>
+            </div>
+            <span class="chip {{ item.cls }}">{{ item.type|capitalize }}</span>
+            <div class="log-row-actions">
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('edit_log', log_type=item.type, log_id=item.id) }}">✏️ Edit</a>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="muted" style="padding:10px 0 2px;">Nothing yet — your latest entries will appear here.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
