@@ -2,6 +2,8 @@
 
 Train. Level up. Dominate.
 
+[![tests](https://github.com/victus-lol/ironbound/actions/workflows/tests.yml/badge.svg)](https://github.com/victus-lol/ironbound/actions/workflows/tests.yml)
+
 A fitness stat tracker that turns real gym data — lifts, runs, field tests, and body
 measurements — into RPG-style stats (**STR / END / AGI / VIT / POW / FLX**), ranks you
 against published fitness standards (Average → Healthy → Enthusiast → Pro), and shows
@@ -155,6 +157,35 @@ the **"Train your weakest stat"** card tells you exactly what to log next to
 move your overall rank most. The goal is simple — open the app, see one thing
 worth doing, do it, get praised, come back tomorrow.
 
+## Training plan & diet
+
+The **📅 Plan** page generates a weekly training timetable and a day-by-day
+general food chart from a few questions:
+
+- **Goal** — muscle building, fat loss, general weight loss, body shaping, or
+  all-round fitness.
+- **Schedule** — how many days a week you want to train, *which* weekdays are
+  rest days, and which muscle groups deserve extra focus.
+- **Diet** — vegetarian / eggetarian / pescatarian / non-veg, common allergies
+  (dairy, gluten, nuts, seafood, and more), and free-text rules for special days
+  (e.g. *"Non-veg only on Saturday"*, *"fast on Monday"*).
+
+From that it builds:
+
+- A **Mon–Sun timetable**: each training day lists concrete exercises from the
+  library, each with a **Log it →** shortcut into the logger; rest days get an
+  active-recovery suggestion.
+- A **food chart**: four meals per day (Breakfast / Lunch / Evening snack /
+  Dinner), auto-swapping anything matching your allergies, flagging days your
+  rules mention with lighter fasting-friendly meals, and showing a **daily
+  calorie + macro estimate** (kcal / protein / carbs / fat) scaled to your
+  bodyweight and goal.
+
+The dashboard shows a **Today's session** card for the current weekday (or your
+rest-day plan), so you always know what's on tap. Everything is editable — change
+any preference and the week regenerates instantly. It's general guidance, not
+medical advice.
+
 ## Install it as an app (PWA)
 
 IRONBOUND is a **progressive web app** — on Android (Chrome) or iOS (Safari) use
@@ -226,7 +257,7 @@ references. For guidance, not medical advice.
 
 ```
 ironbound/
-  app.py            # Flask app: engine + routes (incl. /export, /export.csv, /import)
+  app.py            # Flask app: engine + routes (incl. /export, /export.csv, /import, /plan)
   ironbound.db      # all data (SQLite) — created on first run
   static/css/       # design system: day & night themes (style.css)
   static/js/        # charts, weather, theme toggle, form previews (main.js, theme.js)
@@ -234,7 +265,8 @@ ironbound/
   static/manifest.webmanifest  # PWA manifest (app icon, standalone mode)
   static/icons/     # app icons (PNG, generated)
   static/vendor/    # self-hosted third-party libs (Chart.js — no CDN needed)
-  templates/        # Jinja2 pages (+ log hub, my-logs, settings, achievements)
+  templates/        # Jinja2 pages (+ log hub, my-logs, settings, achievements, plan)
   tests/            # unit + integration tests
+  .github/workflows/  # CI — runs the test suite on every push/PR
   requirements.txt
 ```
