@@ -755,7 +755,7 @@ class TestIronbound(unittest.TestCase):
             self.assertIn("Log it", html)
             self.assertIn("/log/exercise?exercise=", html)
         # the today helper agrees on the weekday index
-        t = app_module.plan_today(self.user_id("today_guy"))
+        t = app_module.today_plan(self.user_id("today_guy"))
         self.assertEqual(t["has_plan"], True)
         from datetime import datetime as _dt
         self.assertEqual(t["day"]["index"], _dt.now().weekday())

@@ -197,11 +197,6 @@ def db_conn():
         conn.close()
 
 
-def get_db():
-    """Kept for tests/compat — returns a new, closed-when-done connection."""
-    return db_conn()
-
-
 SCHEMA = """\
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -434,7 +429,7 @@ def _inject_player():
         cached = {"player": {
             "level": lvl,
             "xp": xp,
-            "rank": score_to_rank(ov) if ov is not None else "?",
+            "rank": score_to_rank(ov) if ov is not None else "q",
             "overall": ov,
         }}
         g._ib_player = cached
@@ -638,12 +633,23 @@ def latest_body_fat(user_id, as_of=None):
                 "SELECT waist_cm, neck_cm, height_cm, hip_cm FROM body_logs WHERE user_id = ? ORDER BY logged_at DESC LIMIT 1",
                 (user_id,)
             ).fetchone()
-        gender_row = conn.execute("SELECT gender FROM users WHERE id = ?", (user_id,)).fetchone()
 
     if not row:
         return None
-    gender = gender_row["gender"] if gender_row else "male"
+    gender = get_user_gender(user_id)
     return estimate_body_fat_navy(row["waist_cm"], row["neck_cm"], row["height_cm"], row["hip_cm"], gender)
+
+
+def count_logs(user_id):
+    """Number of entries per log table — shared by the dashboard + analytics."""
+    with db_conn() as conn:
+        return {
+            "strength": conn.execute("SELECT COUNT(*) as c FROM strength_logs WHERE user_id = ?", (user_id,)).fetchone()["c"],
+            "cardio": conn.execute("SELECT COUNT(*) as c FROM cardio_logs WHERE user_id = ?", (user_id,)).fetchone()["c"],
+            "body": conn.execute("SELECT COUNT(*) as c FROM body_logs WHERE user_id = ?", (user_id,)).fetchone()["c"],
+            "performance": conn.execute("SELECT COUNT(*) as c FROM performance_logs WHERE user_id = ?", (user_id,)).fetchone()["c"],
+            "exercise": conn.execute("SELECT COUNT(*) as c FROM exercise_logs WHERE user_id = ?", (user_id,)).fetchone()["c"],
+        }
 
 
 def get_bodyweight(user_id):
@@ -887,45 +893,64 @@ def training_credit(user_id, as_of=None):
     return out
 
 
-def compute_stats(user_id, as_of=None):
+def current_raw_metrics(user_id, as_of=None):
+    """Latest (or as-of) raw value per metric — the single source of truth
+    used by the stat engine, the tier-gap calculator, and the Standards page."""
     bw = get_bodyweight(user_id)
+    lifts = {lift: best_1rm(user_id, lift, as_of=as_of) for lift in ["bench", "squat", "deadlift"]}
+    return {
+        "bodyweight": bw,
+        "lifts": lifts,
+        "bench_ratio": round(lifts["bench"] / bw, 2) if bw and lifts["bench"] else None,
+        "squat_ratio": round(lifts["squat"] / bw, 2) if bw and lifts["squat"] else None,
+        "deadlift_ratio": round(lifts["deadlift"] / bw, 2) if bw and lifts["deadlift"] else None,
+        "vo2max": best_vo2max(user_id, as_of=as_of),
+        "vertical_jump": best_vertical_jump(user_id, as_of=as_of),
+        "sprint_40m": best_sprint_40m(user_id, as_of=as_of),
+        "sit_and_reach": best_sit_and_reach(user_id, as_of=as_of),
+        "body_fat": latest_body_fat(user_id, as_of=as_of),
+    }
+
+
+def compute_stats(user_id, as_of=None):
+    m = current_raw_metrics(user_id, as_of=as_of)
     benchmarks = get_benchmarks(get_user_gender(user_id))
     stats = {k: None for k in STATS}
     details = {}
 
-    if bw:
+    if m["bodyweight"]:
         lift_scores = []
         for lift, key in [("bench", "bench_ratio"), ("squat", "squat_ratio"), ("deadlift", "deadlift_ratio")]:
-            one_rm = best_1rm(user_id, lift, as_of=as_of)
+            one_rm = m["lifts"][lift]
             if one_rm:
-                ratio = one_rm / bw
+                ratio = one_rm / m["bodyweight"]
                 score = interpolate_score(ratio, key, benchmarks)
                 lift_scores.append(score)
                 details[lift] = {"1rm_kg": one_rm, "ratio": round(ratio, 2), "score": score}
         if lift_scores:
             stats["STR"] = round(sum(lift_scores) / len(lift_scores), 1)
 
-    vo2 = best_vo2max(user_id, as_of=as_of)
+    vo2 = m["vo2max"]
     if vo2:
         stats["END"] = interpolate_score(vo2, "vo2max", benchmarks)
         details["vo2max"] = {"value": vo2, "score": stats["END"]}
 
-    vj = best_vertical_jump(user_id, as_of=as_of)
+    vj = m["vertical_jump"]
     if vj:
         stats["POW"] = interpolate_score(vj, "vertical_jump", benchmarks)
         details["vertical_jump"] = {"value": vj, "score": stats["POW"]}
 
-    sp = best_sprint_40m(user_id, as_of=as_of)
+    sp = m["sprint_40m"]
     if sp:
         stats["AGI"] = interpolate_score(sp, "sprint_40m", benchmarks, inverted=True)
         details["sprint"] = {"value": sp, "score": stats["AGI"]}
 
-    sr = best_sit_and_reach(user_id, as_of=as_of)
+    sr = m["sit_and_reach"]
     if sr:
         stats["FLX"] = interpolate_score(sr, "sit_and_reach", benchmarks)
         details["sit_and_reach"] = {"value": sr, "score": stats["FLX"]}
 
-    bf = latest_body_fat(user_id, as_of=as_of)
+    bf = m["body_fat"]
     if bf:
         stats["VIT"] = interpolate_score(bf, "body_fat", benchmarks, inverted=True)
         details["body_fat"] = {"value": bf, "score": stats["VIT"]}
@@ -977,15 +1002,15 @@ def compute_trends(history):
 
 def compare_to_tier(user_id, target_tier):
     """Compare current raw metrics against a tier; report what's needed."""
-    bw = get_bodyweight(user_id)
+    m = current_raw_metrics(user_id)
     benchmarks = get_benchmarks(get_user_gender(user_id))
     gaps = {}
 
-    if bw:
+    if m["bodyweight"]:
         for lift, key in [("bench", "bench_ratio"), ("squat", "squat_ratio"), ("deadlift", "deadlift_ratio")]:
-            one_rm = best_1rm(user_id, lift)
+            one_rm = m["lifts"][lift]
             target_ratio = benchmarks[key][target_tier]
-            target_kg = round(target_ratio * bw, 1)
+            target_kg = round(target_ratio * m["bodyweight"], 1)
             current_kg = one_rm or 0
             gaps[lift] = {
                 "current_kg": current_kg,
@@ -994,7 +1019,7 @@ def compare_to_tier(user_id, target_tier):
                 "met": current_kg >= target_kg,
             }
 
-    vo2 = best_vo2max(user_id)
+    vo2 = m["vo2max"]
     target_vo2 = benchmarks["vo2max"][target_tier]
     gaps["vo2max"] = {
         "current": vo2 or 0,
@@ -1003,7 +1028,7 @@ def compare_to_tier(user_id, target_tier):
         "met": (vo2 or 0) >= target_vo2,
     }
 
-    vj = best_vertical_jump(user_id)
+    vj = m["vertical_jump"]
     target_vj = benchmarks["vertical_jump"][target_tier]
     gaps["vertical_jump"] = {
         "current": vj or 0,
@@ -1012,7 +1037,7 @@ def compare_to_tier(user_id, target_tier):
         "met": (vj or 0) >= target_vj,
     }
 
-    sp = best_sprint_40m(user_id)
+    sp = m["sprint_40m"]
     target_sp = benchmarks["sprint_40m"][target_tier]
     gaps["sprint"] = {
         "current": sp or 0,
@@ -1021,7 +1046,7 @@ def compare_to_tier(user_id, target_tier):
         "met": (sp is not None and sp <= target_sp),
     }
 
-    sr = best_sit_and_reach(user_id)
+    sr = m["sit_and_reach"]
     target_sr = benchmarks["sit_and_reach"][target_tier]
     gaps["sit_and_reach"] = {
         "current": sr or 0,
@@ -1030,7 +1055,7 @@ def compare_to_tier(user_id, target_tier):
         "met": (sr or 0) >= target_sr,
     }
 
-    bf = latest_body_fat(user_id)
+    bf = m["body_fat"]
     target_bf = benchmarks["body_fat"][target_tier]
     gaps["body_fat"] = {
         "current": bf or None,
@@ -1040,22 +1065,6 @@ def compare_to_tier(user_id, target_tier):
     }
 
     return gaps
-
-
-def current_raw_metrics(user_id):
-    """Latest raw values per metric (None when not logged) — used by the Standards page."""
-    bw = get_bodyweight(user_id)
-    lifts = {lift: best_1rm(user_id, lift) for lift in ["bench", "squat", "deadlift"]}
-    return {
-        "bench_ratio": round(lifts["bench"] / bw, 2) if bw and lifts["bench"] else None,
-        "squat_ratio": round(lifts["squat"] / bw, 2) if bw and lifts["squat"] else None,
-        "deadlift_ratio": round(lifts["deadlift"] / bw, 2) if bw and lifts["deadlift"] else None,
-        "vo2max": best_vo2max(user_id),
-        "vertical_jump": best_vertical_jump(user_id),
-        "sprint_40m": best_sprint_40m(user_id),
-        "sit_and_reach": best_sit_and_reach(user_id),
-        "body_fat": latest_body_fat(user_id),
-    }
 
 
 def greeting():
@@ -2048,27 +2057,19 @@ def _daily_targets(goal, bodyweight_kg):
     return {"kcal": 2000, "protein": 110, "carbs": 240, "fat": 55, "uses_bw": False}
 
 
-def plan_today(user_id):
-    """Today's entry from the saved training plan, or None if no plan yet."""
+def today_plan(user_id):
+    """Today's plan entry with live completion state (which planned exercises
+    are already logged today) — drives the dashboard checklist. None if no plan."""
     prefs = get_plan_prefs(user_id)
     if not prefs:
         return None
     plan = build_weekly_plan(prefs)
     idx = datetime.now().weekday()
     day = next((d for d in plan["days"] if d["index"] == idx), None)
-    return {
+    info = {
         "has_plan": True, "day": day, "weekday": WEEKDAYS[idx],
         "goal_label": plan["goal_label"], "goal_icon": plan["goal_icon"],
     }
-
-
-def today_plan(user_id):
-    """Today's plan entry with live completion state (which exercises are
-    already logged today) — drives the dashboard checklist."""
-    info = plan_today(user_id)
-    if not info:
-        return None
-    day = info["day"]
     if day["is_rest"]:
         info["total"] = None
         info["done_count"] = None
@@ -2393,13 +2394,7 @@ def dashboard():
 
     with db_conn() as conn:
         user_row = conn.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
-        log_counts = {
-            "strength": conn.execute("SELECT COUNT(*) as c FROM strength_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-            "cardio": conn.execute("SELECT COUNT(*) as c FROM cardio_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-            "body": conn.execute("SELECT COUNT(*) as c FROM body_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-            "performance": conn.execute("SELECT COUNT(*) as c FROM performance_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-            "exercise": conn.execute("SELECT COUNT(*) as c FROM exercise_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-        }
+    log_counts = count_logs(uid)
 
     stats, details, ranks = compute_stats(uid)
     bw = get_bodyweight(uid)
@@ -2420,17 +2415,6 @@ def dashboard():
         "vo2max": details["vo2max"]["value"] if details.get("vo2max") else None,
         "bodyweight": bw,
     }
-
-    onboarding = [
-        {"key": "bodyweight", "done": bool(bw), "icon": "⚖️",
-         "label": "Set your bodyweight", "href": "/"},
-        {"key": "strength", "done": log_counts["strength"] > 0, "icon": "🏋️",
-         "label": "Log a strength set", "href": "/log/strength"},
-        {"key": "cardio", "done": log_counts["cardio"] > 0, "icon": "🏃",
-         "label": "Log a run", "href": "/log/cardio"},
-        {"key": "body", "done": log_counts["body"] > 0, "icon": "📏",
-         "label": "Add body metrics", "href": "/log/body"},
-    ]
 
     _badges, _ctx = check_badges(uid)
     badge_earned = len([b for b in _badges if b["earned"]])
@@ -2484,7 +2468,6 @@ def dashboard():
         top_rings=scored[:3], kpis=kpi_map,
         greeting_text=greeting_text,
         has_data=has_data,
-        onboarding=onboarding,
         now_local=default_logged_at(),
         streak=streak,
         weekly=weekly,
@@ -2532,14 +2515,7 @@ def analytics():
     uid = current_user_id()
     stats, details, ranks = compute_stats(uid)
     history = compute_history(uid)
-    with db_conn() as conn:
-        log_counts = {
-            "strength": conn.execute("SELECT COUNT(*) as c FROM strength_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-            "cardio": conn.execute("SELECT COUNT(*) as c FROM cardio_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-            "body": conn.execute("SELECT COUNT(*) as c FROM body_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-            "performance": conn.execute("SELECT COUNT(*) as c FROM performance_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-            "exercise": conn.execute("SELECT COUNT(*) as c FROM exercise_logs WHERE user_id = ?", (uid,)).fetchone()["c"],
-        }
+    log_counts = count_logs(uid)
     return render_template(
         "analytics.html",
         username=session.get("username"),

@@ -167,19 +167,7 @@
         </div>
     </div>
 
-    {% set pending = onboarding | rejectattr('done') | list %}
-    {% if pending %}
-    <div class="card-head" style="margin-top:10px;"><span class="card-title">Start here</span></div>
-    <div class="onboard-list">
-        {% for step in onboarding %}
-        <a class="onboard-row {% if step.done %}done{% endif %}" href="{{ step.href }}">
-            <span class="onboard-check" aria-hidden="true">{% if step.done %}✓{% else %}·{% endif %}</span>
-            <span class="onboard-label">{{ step.icon }} {{ step.label }}</span>
-            {% if not step.done %}<span class="muted">do it now →</span>{% endif %}
-        </a>
-        {% endfor %}
-    </div>
-    <div class="card-head" style="margin-top:18px;"><span class="card-title">Bodyweight</span></div>
+    <div class="card-head" style="margin-top:10px;"><span class="card-title">Bodyweight</span></div>
     <form method="POST" style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="min-width:160px; flex:1;">
@@ -188,7 +176,6 @@
         </div>
         <button class="btn btn-primary" type="submit">Save</button>
     </form>
-    {% endif %}
 </div>
 {% else %}
 
