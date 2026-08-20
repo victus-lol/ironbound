@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.git/
+.github/
+.gitignore
+.env
+.secret_key
+*.db
+tests/
+.venv/
+venv/
+Dockerfile
+README.md
+.dockerignore

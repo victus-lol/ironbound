@@ -9,11 +9,11 @@
 <meta name="theme-color" content="#0b0f1a">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/icon-192.png') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-<script src="{{ url_for('static', filename='js/theme.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}?v=14"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=13">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=14">
 <meta name="color-scheme" content="dark light">
 </head>
 <body>
@@ -33,8 +33,7 @@
     <nav class="sidenav">
         <a href="/" class="{% if request.path == '/' %}active{% endif %}" aria-current="{% if request.path == '/' %}page{% endif %}"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg></span>Dashboard</a>
         <a href="/analytics" class="{% if request.path == '/analytics' %}active{% endif %}" aria-current="{% if request.path == '/analytics' %}page{% endif %}"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-8"/><path d="M14 7h6v6"/></svg></span>Analytics</a>
-        <a href="/compare" class="{% if request.path == '/compare' %}active{% endif %}" aria-current="{% if request.path == '/compare' %}page{% endif %}"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></span>Compare</a>
-        <a href="/benchmarks" class="{% if request.path == '/benchmarks' %}active{% endif %}" aria-current="{% if request.path == '/benchmarks' %}page{% endif %}"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V10M11 21V4M17 21v-7"/></svg></span>Standards</a>
+        <a href="/standards" class="{% if request.path == '/standards' %}active{% endif %}" aria-current="{% if request.path == '/standards' %}page{% endif %}"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V10M11 21V4M17 21v-7"/></svg></span>Standards</a>
         <a href="/exercises" class="{% if request.path == '/exercises' %}active{% endif %}" aria-current="{% if request.path == '/exercises' %}page{% endif %}"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M4 9v6M20 9v6M9.5 12h5"/></svg></span>Exercises</a>
         <a href="/plan" class="{% if request.path == '/plan' %}active{% endif %}" aria-current="{% if request.path == '/plan' %}page{% endif %}"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="M9 14h.01M13 14h.01M9 18h.01M13 18h.01M17 14h.01M17 18h.01"/></svg></span>Plan</a>
         <a href="/logs" class="{% if request.path == '/logs' %}active{% endif %}" aria-current="{% if request.path == '/logs' %}page{% endif %}"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></span>My Logs</a>
@@ -107,6 +106,6 @@
 <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
 
 {% block scripts %}{% endblock %}
-<script src="{{ url_for('static', filename='js/main.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=14"></script>
 </body>
 </html>

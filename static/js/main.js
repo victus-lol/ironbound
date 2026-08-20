@@ -299,6 +299,42 @@
             chartInstances.push(weightChart);
         }
 
+        const bfEl = document.getElementById('bodyfatChart');
+        if (bfEl) {
+            const bf = data.bodyfat || [];
+            const bfChart = new Chart(bfEl, {
+                type: 'line',
+                data: {
+                    labels: bf.map(h => shortLabel(h.date)),
+                    datasets: [{
+                        label: 'Body fat',
+                        data: bf.map(h => h.pct),
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                        borderWidth: 2,
+                        tension: 0.35,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#f59e0b',
+                        pointBorderColor: pointBorder,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => 'Body fat: ' + ctx.parsed.y + '%' } }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: chartText, maxTicksLimit: 8 } },
+                        y: { grid: { color: grid }, ticks: { color: chartText, maxTicksLimit: 5 } }
+                    }
+                }
+            });
+            chartInstances.push(bfChart);
+        }
+
         // overall-score bars
         const barEl = document.getElementById('barChart');
         let barChart = null;
@@ -725,6 +761,47 @@
         else if (sel) setMode(isTimed() ? 'timed' : 'rep');
     }
 
+    // ---------- ambient background aurora (cursor-follow glow) ----------
+    function initAurora() {
+        var scene = document.querySelector('.bg-scene');
+        if (!scene) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        document.body.classList.add('aurora-ready');
+        var ticking = false;
+        window.addEventListener('mousemove', function (e) {
+            if (ticking) return;
+            ticking = true;
+            window.requestAnimationFrame(function () {
+                scene.style.setProperty('--aurora-x', ((e.clientX / window.innerWidth) * 100).toFixed(1) + '%');
+                scene.style.setProperty('--aurora-y', ((e.clientY / window.innerHeight) * 100).toFixed(1) + '%');
+                ticking = false;
+            });
+        }, { passive: true });
+    }
+
+    // ---------- floating quick-log action button ----------
+    function initQuickFab() {
+        var fab = document.getElementById('fab');
+        var menu = document.getElementById('fabMenu');
+        if (!fab || !menu) return;
+        function setOpen(open) {
+            fab.classList.toggle('open', open);
+            menu.classList.toggle('open', open);
+            fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) menu.querySelector('a').focus();
+        }
+        fab.addEventListener('click', function () {
+            setOpen(!fab.classList.contains('open'));
+        });
+        document.addEventListener('click', function (e) {
+            if (!fab.contains(e.target) && !menu.contains(e.target)) setOpen(false);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') setOpen(false);
+        });
+        window.addEventListener('resize', function () { if (window.innerWidth > 1024) setOpen(false); });
+    }
+
     // ---------- installable app (service worker for static assets) ----------
     function initServiceWorker() {
         if (!('serviceWorker' in navigator)) return;
@@ -748,6 +825,8 @@
         initBodyPreview();
         initPerformancePreview();
         initExerciseForm();
+        initQuickFab();
+        initAurora();
         initServiceWorker();
     });
 })();

@@ -4,8 +4,8 @@
    per-user pages are never intercepted — data and auth always come from the
    server. Navigations are network-first so fresh content wins when online. */
 
-const CACHE = 'ironbound-v5';
-const VERSION = 13;
+const CACHE = 'ironbound-v6';
+const VERSION = 14;
 const CORE_STATIC = [
   '/static/css/style.css?v=' + VERSION,
   '/static/js/main.js?v=' + VERSION,

@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Login · Ironbound</title>
-<script src="{{ url_for('static', filename='js/theme.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}?v=14"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=13">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=14">
 <meta name="theme-color" content="#0b0f1a">
 <meta name="color-scheme" content="dark light">
 </head>
@@ -47,6 +47,6 @@
 {% set flashes = get_flashed_messages(with_categories=true) %}
 <div id="flash-data" {% if flashes %}data-messages="{{ flashes | tojson | forceescape }}"{% endif %} hidden></div>
 <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
-<script src="{{ url_for('static', filename='js/main.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=14"></script>
 </body>
 </html>

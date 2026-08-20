@@ -6,6 +6,7 @@ import secrets
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from io import BytesIO
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -119,7 +120,7 @@ class TestIronbound(unittest.TestCase):
         self.assertEqual(r.status_code, 400)
 
     def test_protected_routes_require_login(self):
-        for path in ["/compare", "/benchmarks", "/exercises", "/plan", "/log", "/logs", "/settings",
+        for path in ["/standards", "/exercises", "/plan", "/log", "/logs", "/settings",
                      "/achievements",
                      "/log/strength", "/log/cardio", "/log/body", "/log/performance"]:
             r = self.app.test_client().get(path)
@@ -175,7 +176,7 @@ class TestIronbound(unittest.TestCase):
         self.assertEqual(self.post(c, "/", {"bodyweight_kg": 78}).status_code, 302)
 
         # all pages render
-        for path in ["/", "/analytics", "/compare", "/benchmarks", "/exercises", "/plan", "/log", "/logs", "/settings",
+        for path in ["/", "/analytics", "/standards", "/exercises", "/plan", "/log", "/logs", "/settings",
                      "/log/strength", "/log/cardio", "/log/body", "/log/performance"]:
             r = c.get(path)
             self.assertEqual(r.status_code, 200, f"{path} should render 200")
@@ -206,17 +207,13 @@ class TestIronbound(unittest.TestCase):
         # Chart.js is self-hosted, not pulled from a CDN
         self.assertIn("vendor/chart.umd.min.js", html)
 
-        # compare page for each tier
-        for tier in ["sedentary", "healthy", "enthusiast", "pro"]:
-            r = self.post(c, "/compare", {"tier": tier})
-            self.assertEqual(r.status_code, 200, f"compare {tier}")
-
-        # standards page shows the "You" column
-        html = c.get("/benchmarks").get_data(as_text=True)
+        # standards page shows the "You" column and per-tier gaps
+        html = c.get("/standards").get_data(as_text=True)
         self.assertIn(">You<", html)
+        self.assertIn("Path to", html)
 
         # invalid tier falls back to enthusiast
-        r = self.post(c, "/compare", {"tier": "banana"})
+        r = c.get("/standards?tier=banana")
         self.assertEqual(r.status_code, 200)
 
     def test_backdating(self):
@@ -419,7 +416,7 @@ class TestIronbound(unittest.TestCase):
         c = self.app.test_client()
         self.signup(c, {"username": "virgin_gamer", "password": "fresh1234", "gender": "male"})
         uid = self.user_id("virgin_gamer")
-        self.assertEqual(app_module.compute_streak(uid), {"current": 0, "best": 0})
+        self.assertEqual(app_module.compute_streak(uid), {"current": 0, "best": 0, "last_log": None})
         self.assertEqual(app_module.weekly_volume(uid)["volume"], 0)
         self.assertEqual(app_module.personal_records(uid), {})
         badges, ctx = app_module.check_badges(uid)
@@ -535,7 +532,7 @@ class TestIronbound(unittest.TestCase):
         self.post(c, "/log/strength", {"lift": "bench", "weight_kg": 90, "reps": 3})
         html = c.get("/").get_data(as_text=True)
         self.assertIn("PR", html)
-        self.assertIn("bench", html)
+        self.assertIn("Bench Press PR", html)
 
     def test_csv_export(self):
         c = self.login()
@@ -591,6 +588,138 @@ class TestIronbound(unittest.TestCase):
         # a nonexistent exercise is rejected
         r = self.post(c, "/log/exercise", {"exercise_key": "Not A Real One", "reps": 5})
         self.assertEqual(r.status_code, 400)
+
+    def test_big3_exercise_dual_path(self):
+        # Big-3 lifts logged through the general exercise library should also
+        # write a strength_logs row, so one entry counts for credit AND 1RM.
+        c = self.app.test_client()
+        self.signup(c, {"username": "dual_hero", "password": "hunter21", "gender": "male"})
+        uid = self.user_id("dual_hero")
+        r = self.post(c, "/log/exercise", {"exercise_key": "Legs (Quads/Glutes)", "sets": 3, "reps": 5, "weight_kg": 100})
+        self.assertEqual(r.status_code, 302)
+        with app_module.db_conn() as conn:
+            ex = conn.execute("SELECT * FROM exercise_logs WHERE user_id = ?", (uid,)).fetchone()
+            sl = conn.execute("SELECT * FROM strength_logs WHERE user_id = ? AND lift = 'squat'", (uid,)).fetchone()
+        self.assertIsNotNone(ex)
+        self.assertIsNotNone(sl)
+        self.assertEqual(sl["source_exercise_log_id"], ex["id"])
+        self.assertEqual(sl["weight_kg"], 100)
+        self.assertEqual(sl["reps"], 5)
+        # the 1RM is now visible to the stat engine (with a bodyweight to score against)
+        self.post(c, "/", {"bodyweight_kg": 80})
+        self.assertAlmostEqual(app_module.best_1rm(uid, "squat"), app_module.epley_1rm(100, 5), places=1)
+        stats, _, _ = app_module.compute_stats(uid)
+        self.assertIsNotNone(stats["STR"])
+        # minutes-based big-3 log does NOT dual-write a 1RM
+        self.post(c, "/log/exercise", {"exercise_key": "Legs (Quads/Glutes)", "minutes": 30})
+        with app_module.db_conn() as conn:
+            n = conn.execute(
+                "SELECT COUNT(*) AS c FROM strength_logs WHERE user_id = ? AND source_exercise_log_id IS NOT NULL",
+                (uid,),
+            ).fetchone()["c"]
+        self.assertEqual(n, 1)
+        # editing the big-3 log out of the big-3 removes the linked 1RM row
+        self.post(c, f"/logs/exercise/{ex['id']}/edit",
+                  {"exercise_key": "Biceps", "sets": 3, "reps": 10, "weight_kg": 15})
+        with app_module.db_conn() as conn:
+            linked = conn.execute(
+                "SELECT id FROM strength_logs WHERE source_exercise_log_id = ?", (ex["id"],)
+            ).fetchone()
+        self.assertIsNone(linked)
+        self.assertIsNone(app_module.best_1rm(uid, "squat"))
+        # and editing a normal log INTO a big-3 adds one
+        self.post(c, f"/logs/exercise/{ex['id']}/edit",
+                  {"exercise_key": "Legs (Quads/Glutes)", "sets": 3, "reps": 5, "weight_kg": 110})
+        with app_module.db_conn() as conn:
+            linked = conn.execute(
+                "SELECT * FROM strength_logs WHERE source_exercise_log_id = ?", (ex["id"],)
+            ).fetchone()
+        self.assertIsNotNone(linked)
+        self.assertEqual(linked["weight_kg"], 110)
+        # deleting the exercise log deletes its linked 1RM row too
+        c2 = self.login("dual_hero")
+        self.post(c2, f"/logs/exercise/{ex['id']}/delete")
+        with app_module.db_conn() as conn:
+            linked = conn.execute(
+                "SELECT id FROM strength_logs WHERE source_exercise_log_id = ?", (ex["id"],)
+            ).fetchone()
+        self.assertIsNone(linked)
+        self.assertIsNone(app_module.best_1rm(uid, "squat"))
+
+    def test_interpolation_boundaries(self):
+        b = app_module.BENCHMARKS_MALE
+        # exact tier thresholds map to exactly 33 / 66 / 100
+        self.assertEqual(app_module.interpolate_score(0.75, "bench_ratio", b), 33.0)
+        self.assertEqual(app_module.interpolate_score(1.25, "bench_ratio", b), 66.0)
+        self.assertEqual(app_module.interpolate_score(2.0, "bench_ratio", b), 100.0)
+        # midpoints between tiers
+        self.assertAlmostEqual(app_module.interpolate_score(1.0, "bench_ratio", b), 49.5, places=1)
+        # inverted metrics (body fat: lower is better) still hit exact tiers
+        self.assertEqual(app_module.interpolate_score(20, "body_fat", b, inverted=True), 33.0)
+        self.assertEqual(app_module.interpolate_score(15, "body_fat", b, inverted=True), 66.0)
+        self.assertEqual(app_module.interpolate_score(9, "body_fat", b, inverted=True), 100.0)
+        # below the bottom tier floors at 0, above the top caps at 100
+        self.assertEqual(app_module.interpolate_score(0.2, "bench_ratio", b), 0)
+        self.assertEqual(app_module.interpolate_score(0.05, "bench_ratio", b), 0)
+        self.assertEqual(app_module.interpolate_score(3.0, "bench_ratio", b), 100)
+
+    def test_import_adversarial(self):
+        c = self.login()
+        # non-JSON file -> friendly error, no crash (flash shows on My Logs)
+        r = self.post(c, "/import", {"file": (BytesIO(b"not json at all"), "x.json")})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn(b"valid JSON", c.get("/logs").get_data())
+        # JSON that is not an object -> friendly error, no crash
+        r = self.post(c, "/import", {"file": (BytesIO(b"[1,2,3]"), "x.json")})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn(b"backup", c.get("/logs").get_data())
+        # hostile rows: non-dicts, wrong numeric types, absurd values are skipped
+        payload = {
+            "strength_logs": [
+                "junk",
+                None,
+                {"weight_kg": "not-a-number", "reps": 5},
+                {"weight_kg": 70, "reps": "many"},
+                {"weight_kg": 10 ** 30, "reps": 5},
+                {"weight_kg": 60, "reps": 5, "logged_at": "2026-03-01T08:00"},
+            ]
+        }
+        r = self.post(c, "/import", {"file": (BytesIO(json.dumps(payload).encode()), "x.json")})
+        self.assertEqual(r.status_code, 302)
+        with app_module.db_conn() as conn:
+            rows = conn.execute(
+                "SELECT weight_kg, reps FROM strength_logs WHERE logged_at LIKE '2026-03-01%'"
+            ).fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["weight_kg"], 60)
+
+    def test_standards_tier_highlight(self):
+        c = self.login()
+        self.post(c, "/log/strength", {"lift": "bench", "weight_kg": 80, "reps": 5})
+        self.post(c, "/", {"bodyweight_kg": 78})
+        html = c.get("/standards?tier=pro").get_data(as_text=True)
+        self.assertIn("Path to Pro", html)
+        # the Pro column in the reference tables gets the active highlight
+        self.assertEqual(html.count("t-col-active"), 18)  # header + 8 metric cells, ×2 genders
+        html2 = c.get("/standards?tier=healthy").get_data(as_text=True)
+        self.assertIn("Path to Healthy", html2)
+
+    def test_streak_danger_nudge(self):
+        # fresh user, so we control the entire history
+        c = self.app.test_client()
+        self.signup(c, {"username": "streak_guy", "password": "hunter21", "gender": "male"})
+        uid = self.user_id("streak_guy")
+        # no history -> no nudge
+        self.assertNotIn("on the line", c.get("/").get_data(as_text=True))
+        # a log two days ago means the streak is currently 0 with history
+        self.post(c, "/log/strength",
+                  {"lift": "bench", "weight_kg": 60, "reps": 5,
+                   "logged_at": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%dT08:00")})
+        streak = app_module.compute_streak(uid)
+        self.assertEqual(streak["current"], 0)
+        self.assertIsNotNone(streak["last_log"])
+        html = c.get("/").get_data(as_text=True)
+        self.assertIn("on the line", html)
 
     def test_edit_exercise_log(self):
         c = self.login()

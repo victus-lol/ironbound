@@ -11,7 +11,7 @@
         <p>Log a workout and your activity mix, score trends, and stat-by-stat progress will show up here.</p>
         <div class="actions">
             <a class="btn btn-primary" href="/log">+ Log a workout</a>
-            <a class="btn btn-ghost" href="/benchmarks">See the standards</a>
+            <a class="btn btn-ghost" href="/standards">See the standards</a>
         </div>
     </div>
 </div>
@@ -77,6 +77,17 @@
         <div class="chart-box" style="height:230px;"><canvas id="weightChart"></canvas></div>
         {% else %}
         <p class="muted" style="padding:10px 0;">Log your weight twice and a trend line appears here.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid two" style="margin-top:16px;">
+    <div class="card">
+        <h3 class="card-title">Body-fat trend</h3>
+        {% if chart_data.bodyfat | length >= 2 %}
+        <div class="chart-box" style="height:230px;"><canvas id="bodyfatChart"></canvas></div>
+        {% else %}
+        <p class="muted" style="padding:10px 0;">Log body measurements twice and your body-fat trend appears here. Less is better.</p>
         {% endif %}
     </div>
 </div>

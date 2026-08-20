@@ -111,6 +111,18 @@ Deploy to a free host such as Render, Railway, or Fly.io. The app is a normal
 Flask app, so you just point the host at `app.py`, set `IRONBOUND_DB` to a
 persistent volume path, and it serves HTTPS automatically.
 
+### Run it in Docker
+
+```bash
+docker build -t ironbound .
+docker run -d --name ironbound -p 5000:5000 \
+  -e IRONBOUND_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')" \
+  -v ironbound_data:/data ironbound
+```
+
+It listens on port 5000 with the production **Waitress** server, and the database
+lives in the `/data` volume so it survives rebuilds.
+
 ## Where your data lives & how to back it up
 
 All data is stored in a single SQLite file, `ironbound.db`, right in the project
@@ -259,14 +271,16 @@ references. For guidance, not medical advice.
 ironbound/
   app.py            # Flask app: engine + routes (incl. /export, /export.csv, /import, /plan)
   ironbound.db      # all data (SQLite) — created on first run
-  static/css/       # design system: day & night themes (style.css)
-  static/js/        # charts, weather, theme toggle, form previews (main.js, theme.js)
-  static/sw.js      # service worker — installable app, static-asset caching
+  static/css/       # design system: day & night themes, ambient background (style.css)
+  static/js/        # charts, weather, theme toggle, form previews, FAB (main.js, theme.js)
+  static/sw.js      # service worker — installable app, offline shell + asset caching
   static/manifest.webmanifest  # PWA manifest (app icon, standalone mode)
   static/icons/     # app icons (PNG, generated)
   static/vendor/    # self-hosted third-party libs (Chart.js — no CDN needed)
-  templates/        # Jinja2 pages (+ log hub, my-logs, settings, achievements, plan)
+  templates/        # Jinja2 pages (+ log hub, my-logs, settings, achievements, plan, standards)
   tests/            # unit + integration tests
   .github/workflows/  # CI — runs the test suite on every push/PR
+  Dockerfile        # container image (Waitress server, data in /data volume)
+  .env.example      # copy to .env to configure IRONBOUND_* variables
   requirements.txt
 ```

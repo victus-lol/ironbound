@@ -36,7 +36,7 @@ from io import StringIO
 
 from flask import (
     Flask, render_template, request, redirect, url_for, session, Response,
-    flash, abort, g,
+    flash, abort, g, has_app_context,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -186,6 +186,8 @@ def db_conn():
     """Yield an open SQLite connection; always close it (and roll back on error)."""
     conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
     conn.execute("PRAGMA foreign_keys=ON")
     try:
         yield conn
@@ -308,6 +310,9 @@ MIGRATIONS = {
         "diet_rules TEXT NOT NULL DEFAULT '', "
         "updated_at TEXT, "
         "FOREIGN KEY (user_id) REFERENCES users(id))",
+    ],
+    6: [
+        "ALTER TABLE strength_logs ADD COLUMN source_exercise_log_id INTEGER",
     ],
 }
 
@@ -668,6 +673,24 @@ def bodyweight_history(user_id):
     return [{"date": r["logged_at"][:10], "kg": r["bodyweight_kg"]} for r in rows]
 
 
+def bodyfat_history(user_id):
+    """Chronological body-fat estimates (US Navy) for the trend chart."""
+    gender = get_user_gender(user_id)
+    with db_conn() as conn:
+        rows = conn.execute(
+            "SELECT waist_cm, neck_cm, height_cm, hip_cm, logged_at FROM body_logs "
+            "WHERE user_id = ? ORDER BY logged_at ASC",
+            (user_id,),
+        ).fetchall()
+    out = []
+    for r in rows:
+        bf = estimate_body_fat_navy(r["waist_cm"], r["neck_cm"], r["height_cm"],
+                                    r["hip_cm"], gender)
+        if bf is not None:
+            out.append({"date": r["logged_at"][:10], "pct": bf})
+    return out
+
+
 def get_user_gender(user_id):
     with db_conn() as conn:
         row = conn.execute("SELECT gender FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -912,7 +935,28 @@ def current_raw_metrics(user_id, as_of=None):
     }
 
 
+def _stats_cache():
+    """Per-request memo for stat computation (skipped outside a request/app context)."""
+    if has_app_context():
+        if not hasattr(g, "_ib_stats_cache"):
+            g._ib_stats_cache = {}
+        return g._ib_stats_cache
+    return None
+
+
+def _clear_stats_cache():
+    """Drop the per-request memo after the underlying data changes."""
+    if has_app_context() and hasattr(g, "_ib_stats_cache"):
+        g._ib_stats_cache = {}
+
+
 def compute_stats(user_id, as_of=None):
+    cache = _stats_cache()
+    if cache is not None:
+        key = (user_id, as_of)
+        if key in cache:
+            return cache[key]
+
     m = current_raw_metrics(user_id, as_of=as_of)
     benchmarks = get_benchmarks(get_user_gender(user_id))
     stats = {k: None for k in STATS}
@@ -968,7 +1012,10 @@ def compute_stats(user_id, as_of=None):
                 stats[k] = round(min(100.0, stats[k] + c), 1)
 
     ranks = {k: score_to_rank(v) for k, v in stats.items()}
-    return stats, details, ranks
+    result = (stats, details, ranks)
+    if cache is not None:
+        cache[key] = result
+    return result
 
 
 def compute_history(user_id):
@@ -1177,7 +1224,7 @@ def compute_streak(user_id):
     log, so logging "tomorrow" doesn't wipe it out at midnight."""
     sorted_dates = sorted(_log_dates(user_id))
     if not sorted_dates:
-        return {"current": 0, "best": 0}
+        return {"current": 0, "best": 0, "last_log": None}
     set_dates = set(sorted_dates)
     today = datetime.now().date()
     anchor = today.isoformat() if today.isoformat() in set_dates else None
@@ -1191,7 +1238,8 @@ def compute_streak(user_id):
         while cursor.isoformat() in set_dates:
             current += 1
             cursor = cursor - timedelta(days=1)
-    return {"current": current, "best": _consecutive_days(sorted_dates)}
+    return {"current": current, "best": _consecutive_days(sorted_dates),
+            "last_log": sorted_dates[-1] if sorted_dates else None}
 
 
 def _iso_monday(today):
@@ -2167,6 +2215,16 @@ LOG_SCHEMA = {
 
 LIFT_LABELS = {"bench": "Bench Press", "squat": "Squat", "deadlift": "Deadlift"}
 
+# Big-3 gym exercises logged through the general exercise library ALSO write a
+# strength_logs row (via source_exercise_log_id), so one entry counts for both
+# training credit and the 1RM benchmark. Minutes-based / bodyweight-only logs
+# don't qualify.
+BIG3_EXERCISE_TO_LIFT = {
+    "Barbell Bench Press": "bench",
+    "Barbell Squat": "squat",
+    "Deadlift": "deadlift",
+}
+
 
 def _log_template(log_type):
     return {"strength": "log_strength.html", "cardio": "log_cardio.html",
@@ -2266,6 +2324,28 @@ def update_log(log_type, log_id, user_id, form):
                  form["sets"], form.get("reps"), form.get("weight_kg"), form.get("minutes"),
                  form["logged_at"], log_id, user_id),
             )
+            # Keep the linked strength_logs row in sync (dual-path big-3).
+            dual_lift = BIG3_EXERCISE_TO_LIFT.get(form["exercise_name"])
+            linked = conn.execute(
+                "SELECT id FROM strength_logs WHERE source_exercise_log_id = ? AND user_id = ?",
+                (log_id, user_id),
+            ).fetchone()
+            qualifies = (dual_lift and form.get("weight_kg") is not None
+                         and form.get("reps") is not None and form.get("minutes") is None)
+            if qualifies and linked:
+                conn.execute(
+                    "UPDATE strength_logs SET weight_kg = ?, reps = ?, logged_at = ? WHERE id = ?",
+                    (form["weight_kg"], form["reps"], form["logged_at"], linked["id"]),
+                )
+            elif qualifies and not linked:
+                conn.execute(
+                    "INSERT INTO strength_logs (user_id, lift, weight_kg, reps, logged_at, "
+                    "source_exercise_log_id) VALUES (?, ?, ?, ?, ?, ?)",
+                    (user_id, dual_lift, form["weight_kg"], form["reps"],
+                     form["logged_at"], log_id),
+                )
+            elif linked:
+                conn.execute("DELETE FROM strength_logs WHERE id = ?", (linked["id"],))
         else:
             fields = {}
             for col in ("vertical_jump_cm", "sprint_40m_s", "sit_and_reach_cm"):
@@ -2287,6 +2367,11 @@ def delete_log(log_type, log_id, user_id):
     if not meta:
         return False
     with db_conn() as conn:
+        if log_type == "exercise":
+            conn.execute(
+                "DELETE FROM strength_logs WHERE source_exercise_log_id = ? AND user_id = ?",
+                (log_id, user_id),
+            )
         cur = conn.execute(
             f"DELETE FROM {meta['table']} WHERE id = ? AND user_id = ?", (log_id, user_id)
         )
@@ -2420,6 +2505,7 @@ def dashboard():
     badge_earned = len([b for b in _badges if b["earned"]])
 
     streak = compute_streak(uid)
+    streak_danger = streak["last_log"] is not None and streak["current"] == 0
     weekly = weekly_volume(uid)
 
     greeting_text = greeting()
@@ -2470,6 +2556,7 @@ def dashboard():
         has_data=has_data,
         now_local=default_logged_at(),
         streak=streak,
+        streak_danger=streak_danger,
         weekly=weekly,
         badge_count=badge_earned,
         badge_total=len(_badges),
@@ -2528,17 +2615,23 @@ def analytics():
             "history": history,
             "counts": log_counts,
             "bodyweight": bodyweight_history(uid),
+            "bodyfat": bodyfat_history(uid),
         },
     )
 
 
-@app.route("/benchmarks")
+@app.route("/standards")
 @login_required
-def benchmarks_page():
+def standards_page():
     uid = current_user_id()
     you = current_raw_metrics(uid)
+    target_tier = request.args.get("tier", "enthusiast")
+    if target_tier not in TIER_SCORES:
+        target_tier = "enthusiast"
+    gaps = compare_to_tier(uid, target_tier)
     return render_template(
-        "benchmarks.html", male=BENCHMARKS_MALE, female=BENCHMARKS_FEMALE, you=you
+        "standards.html", male=BENCHMARKS_MALE, female=BENCHMARKS_FEMALE,
+        you=you, gaps=gaps, target_tier=target_tier, tier_labels=TIER_LABELS,
     )
 
 
@@ -2636,20 +2729,6 @@ def onboarding():
         "onboarding.html", goals=PLAN_GOALS, diet_types=DIET_TYPES,
         allergies=ALLERGIES, weekdays=WEEKDAYS, prefs=prefs,
         bodyweight=get_bodyweight(uid), default_rest=default_rest,
-    )
-
-
-@app.route("/compare", methods=["GET", "POST"])
-@login_required
-def compare():
-    uid = current_user_id()
-    target_tier = request.form.get("tier", "enthusiast")
-    if target_tier not in TIER_SCORES:
-        target_tier = "enthusiast"
-    gaps = compare_to_tier(uid, target_tier)
-    return render_template(
-        "compare.html", gaps=gaps, target_tier=target_tier,
-        tier_labels=TIER_LABELS,
     )
 
 
@@ -2996,8 +3075,9 @@ def log_exercise():
             return _log_render("exercise", error=str(e),
                                exercise_library=_exercise_library_data()), 400
         stats_before, _, _ = compute_stats(uid)
+        dual_lift = BIG3_EXERCISE_TO_LIFT.get(form["exercise_name"])
         with db_conn() as conn:
-            conn.execute(
+            cur = conn.execute(
                 "INSERT INTO exercise_logs (user_id, exercise_key, exercise_name, feeds_stat, "
                 "sets, reps, weight_kg, minutes, logged_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -3005,6 +3085,16 @@ def log_exercise():
                  form["sets"], form.get("reps"), form.get("weight_kg"), form.get("minutes"),
                  form["logged_at"]),
             )
+            # Big-3 with weight × reps also counts toward the 1RM benchmark.
+            if (dual_lift and form.get("weight_kg") is not None
+                    and form.get("reps") is not None and form.get("minutes") is None):
+                conn.execute(
+                    "INSERT INTO strength_logs (user_id, lift, weight_kg, reps, logged_at, "
+                    "source_exercise_log_id) VALUES (?, ?, ?, ?, ?, ?)",
+                    (uid, dual_lift, form["weight_kg"], form["reps"], form["logged_at"],
+                     cur.lastrowid),
+                )
+        _clear_stats_cache()
         stats_after, _, _ = compute_stats(uid)
         stat = form["feeds_stat"]
         delta = 0.0
@@ -3012,10 +3102,11 @@ def log_exercise():
             delta = round(stats_after[stat] - stats_before[stat], 1)
         elif stats_after.get(stat) is not None:
             delta = round(stats_after[stat], 1)
+        extra = f" and {dual_lift} 1RM" if dual_lift else ""
         if delta > 0:
-            flash(f"{form['exercise_name']} logged — {STAT_META[stat]['label']} credit +{delta} 🎯", "success")
+            flash(f"{form['exercise_name']} logged — {STAT_META[stat]['label']} credit +{delta}{extra} 🎯", "success")
         else:
-            flash(f"{form['exercise_name']} logged 🎯", "success")
+            flash(f"{form['exercise_name']} logged{extra} 🎯", "success")
         return redirect(url_for("dashboard"))
     selected = request.args.get("exercise", "")
     return _log_render("exercise", exercise_library=_exercise_library_data(),
@@ -3119,6 +3210,9 @@ def import_data():
     except (ValueError, UnicodeDecodeError):
         flash("That file isn't valid JSON.", "error")
         return redirect(url_for("my_logs"))
+    if not isinstance(payload, dict):
+        flash("That file isn't a valid backup (expected a JSON object).", "error")
+        return redirect(url_for("my_logs"))
 
     counts = {"strength": 0, "cardio": 0, "body": 0, "performance": 0, "exercise": 0, "bodyweight": 0}
     with db_conn() as conn:
@@ -3126,7 +3220,10 @@ def import_data():
             for row in rows:
                 if not isinstance(row, dict):
                     continue
-                values = mapper(row)
+                try:
+                    values = mapper(row)
+                except (ValueError, TypeError, KeyError, OverflowError):
+                    continue  # skip malformed rows instead of crashing the import
                 if values is None:
                     continue
                 conn.execute(
