@@ -817,6 +817,68 @@ class TestIronbound(unittest.TestCase):
         self.assertIn('href="/plan"', html)
         self.assertIn(">Plan</a>", html)
 
+    def test_onboarding_renders_steps(self):
+        c = self.app.test_client()
+        self.signup(c, {"username": "ob_guy", "password": "planPass1", "gender": "male"})
+        r = c.get("/onboarding")
+        self.assertEqual(r.status_code, 200)
+        html = r.get_data(as_text=True)
+        self.assertIn('name="goal"', html)
+        self.assertIn('name="training_days"', html)
+        self.assertIn('name="rest_days"', html)
+        self.assertIn('name="diet_type"', html)
+        self.assertIn('name="allergies"', html)
+        self.assertIn('name="bodyweight_kg"', html)
+        self.assertIn("Build your training week", html)
+
+    def test_onboarding_creates_plan_and_bodyweight(self):
+        c = self.app.test_client()
+        self.signup(c, {"username": "ob_complete", "password": "planPass1", "gender": "male"})
+        r = self.post(c, "/onboarding", {
+            "goal": "muscle_building", "training_days": 3,
+            "rest_days": [0, 3, 5, 6], "diet_type": "veg",
+            "bodyweight_kg": "80.5",
+        })
+        self.assertEqual(r.status_code, 302)
+        uid = self.user_id("ob_complete")
+        prefs = app_module.get_plan_prefs(uid)
+        self.assertIsNotNone(prefs)
+        self.assertEqual(prefs["goal"], "muscle_building")
+        self.assertEqual(app_module.get_bodyweight(uid), 80.5)
+        # dashboard now surfaces the today-card and plan exists
+        html = c.get("/").get_data(as_text=True)
+        self.assertIn("today-card", html)
+        self.assertIn("Muscle building plan", html)
+
+    def test_onboarding_validation_guards(self):
+        c = self.app.test_client()
+        self.signup(c, {"username": "ob_bad", "password": "planPass1", "gender": "male"})
+        # wrong rest-day count → flash + redirect, no plan saved
+        r = self.post(c, "/onboarding", {
+            "goal": "fat_loss", "training_days": 4, "rest_days": [0],
+            "diet_type": "veg",
+        })
+        self.assertEqual(r.status_code, 302)
+        self.assertIsNone(app_module.get_plan_prefs(self.user_id("ob_bad")))
+        # bad bodyweight → redirect, no crash
+        r = self.post(c, "/onboarding", {
+            "goal": "fat_loss", "training_days": 4, "rest_days": [0, 3, 6],
+            "diet_type": "veg", "bodyweight_kg": "abc",
+        })
+        self.assertEqual(r.status_code, 302)
+
+    def test_offline_page_public_and_sw_shell(self):
+        r = self.app.test_client().get("/offline")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("You're offline", r.get_data(as_text=True))
+        sw = self.app.test_client().get("/static/sw.js")
+        self.assertEqual(sw.status_code, 200)
+        sw_text = sw.get_data(as_text=True)
+        self.assertIn("/offline", sw_text)
+        self.assertIn("/login", sw_text)
+        self.assertIn("/signup", sw_text)
+        self.assertIn("network-first", sw_text)
+
 
 if __name__ == "__main__":
     unittest.main()

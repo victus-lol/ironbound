@@ -2617,6 +2617,52 @@ def plan():
     )
 
 
+@app.route("/onboarding", methods=["GET", "POST"])
+@login_required
+def onboarding():
+    """First-run wizard: pick a goal, schedule, diet and bodyweight in a few
+    taps, then an auto-generated weekly plan + food chart are saved."""
+    uid = current_user_id()
+    if request.method == "POST":
+        try:
+            prefs = _validate_plan_form(request.form)
+            bw = form_float("bodyweight_kg", "Bodyweight", minv=20, maxv=500, required=False)
+        except ValidationError as e:
+            flash(str(e), "error")
+            return redirect(url_for("onboarding"))
+        write_plan_prefs(uid, prefs)
+        if bw is not None:
+            with db_conn() as conn:
+                conn.execute(
+                    "INSERT INTO profile (user_id, bodyweight_kg, updated_at) VALUES (?, ?, ?) "
+                    "ON CONFLICT(user_id) DO UPDATE SET bodyweight_kg = ?, updated_at = ?",
+                    (uid, bw, datetime.now().isoformat(), bw, datetime.now().isoformat()),
+                )
+                conn.execute(
+                    "INSERT INTO bodyweight_logs (user_id, bodyweight_kg, logged_at) VALUES (?, ?, ?)",
+                    (uid, bw, default_logged_at()),
+                )
+        flash("Welcome, champion — your training week is ready 🎯", "success")
+        return redirect(url_for("dashboard"))
+
+    prefs = get_plan_prefs(uid)
+    if prefs is None:
+        prefs = {"goal": "", "training_days": 3, "rest_days": [0, 5, 6],
+                 "diet_type": "", "allergies": [], "diet_rules": ""}
+    else:
+        prefs = dict(prefs)
+        prefs["rest_days"] = json.loads(prefs.get("rest_days") or "[]")
+        prefs["allergies"] = json.loads(prefs.get("allergies") or "[]")
+    default_rest = {
+        2: [0, 1, 3, 5, 6], 3: [0, 3, 5, 6], 4: [0, 3, 6], 5: [0, 6], 6: [0],
+    }
+    return render_template(
+        "onboarding.html", goals=PLAN_GOALS, diet_types=DIET_TYPES,
+        allergies=ALLERGIES, weekdays=WEEKDAYS, prefs=prefs,
+        bodyweight=get_bodyweight(uid), default_rest=default_rest,
+    )
+
+
 @app.route("/compare", methods=["GET", "POST"])
 @login_required
 def compare():
@@ -3189,6 +3235,13 @@ def not_found(e):
 @app.errorhandler(500)
 def internal_error(e):
     return render_template("500.html"), 500
+
+
+@app.route("/offline")
+def offline():
+    """Public fallback page served from the service-worker cache when the
+    app shell can't be reached (no connection)."""
+    return render_template("offline.html")
 
 
 @app.after_request

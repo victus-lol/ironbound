@@ -2037,3 +2037,39 @@ textarea:focus-visible,
     .landing-stats { grid-template-columns: repeat(2, 1fr); }
     .landing-nav { flex-wrap: wrap; justify-content: center; }
 }
+
+/* --- First-run onboarding wizard --- */
+.ob-step-head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+.ob-step-num { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--grad); color: #04101c; font-weight: 900; font-size: 14px; }
+.ob-step-title { font-family: "Sora", sans-serif; font-size: 17px; font-weight: 800; }
+.ob-step-sub { color: var(--text-2); font-size: 13.5px; margin-top: 2px; }
+.ob-goals { display: grid; gap: 10px; }
+.ob-radio input { position: absolute; opacity: 0; pointer-events: none; }
+.ob-radio-card { display: block; border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease; }
+.ob-radio input:checked + .ob-radio-card { border-color: var(--cyan); background: color-mix(in srgb, var(--cyan) 8%, transparent); }
+.ob-radio input:focus-visible + .ob-radio-card { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.ob-radio-card b { display: block; font-size: 15px; }
+.ob-radio-card small { display: block; color: var(--text-2); font-size: 13px; margin-top: 2px; line-height: 1.45; }
+.ob-radio-ico { font-size: 20px; margin-right: 2px; }
+.ob-days { display: flex; gap: 10px; flex-wrap: wrap; }
+.ob-day .ob-radio-card { padding: 14px 0; text-align: center; min-width: 58px; font-weight: 800; font-size: 16px; }
+.ob-rest { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
+.ob-rest-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.ob-rest-chip span { display: block; min-width: 46px; text-align: center; padding: 9px 10px; border-radius: 10px; border: 1.5px solid var(--border); cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-2); transition: all 0.15s ease; }
+.ob-rest-chip input:checked + span { border-color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green); }
+.ob-rest-chip input:focus-visible + span { outline: 2px solid var(--green); outline-offset: 2px; }
+.ob-rest-hint { font-size: 13px; font-weight: 600; margin-bottom: 10px; min-height: 18px; color: var(--text-2); }
+.ob-allergies { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ob-allergy input { position: absolute; opacity: 0; pointer-events: none; }
+.ob-allergy span { display: block; padding: 9px 11px; border-radius: 10px; border: 1.5px solid var(--border); cursor: pointer; font-size: 13px; color: var(--text-1); transition: all 0.15s ease; }
+.ob-allergy input:checked + span { border-color: var(--cyan); background: color-mix(in srgb, var(--cyan) 8%, transparent); color: var(--text-0); }
+.ob-allergy input:focus-visible + span { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.ob-review { margin-top: 18px; border: 1px solid var(--border); border-radius: 14px; padding: 4px 14px; }
+.ob-review-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.ob-review-row:last-child { border-bottom: none; }
+.ob-review-row span { color: var(--text-2); }
+.ob-review-row b { text-align: right; }
+.ob-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; }
+@media (max-width: 520px) {
+    .ob-allergies { grid-template-columns: 1fr; }
+}
