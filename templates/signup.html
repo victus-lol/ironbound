@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sign up · Ironbound</title>
-<script src="{{ url_for('static', filename='js/theme.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}?v=12"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=12">
 <meta name="theme-color" content="#0b0f1a">
 <meta name="color-scheme" content="dark light">
 </head>
@@ -28,7 +28,7 @@
     </div>
     <div class="auth-tag">Create your character sheet</div>
 
-    <form method="POST">
+    <form method="POST" class="auth-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="username">Username</label>
         <input type="text" id="username" name="username" required autofocus autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+">
@@ -50,8 +50,8 @@
             <option value="female">Female</option>
             <option value="other">Other</option>
         </select>
-        <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center; margin-top:20px;">Start training</button>
         {% if error %}<div class="auth-error" role="alert">{{ error }}</div>{% endif %}
+        <button class="btn btn-primary auth-submit" type="submit">Start training</button>
     </form>
 
     <p class="auth-alt">Already have an account? <a href="/login">Log in</a></p>
@@ -60,6 +60,6 @@
 {% set flashes = get_flashed_messages(with_categories=true) %}
 <div id="flash-data" {% if flashes %}data-messages="{{ flashes | tojson | forceescape }}"{% endif %} hidden></div>
 <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
-<script src="{{ url_for('static', filename='js/main.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=12"></script>
 </body>
 </html>

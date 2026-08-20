@@ -802,10 +802,14 @@ td.you { color: var(--amber); font-weight: 700; }
 .auth-brand { text-align: center; margin-bottom: 6px; }
 .auth-brand .brand { font-size: 26px; justify-content: center; }
 .auth-tag { text-align: center; color: var(--text-2); font-size: 14px; margin-bottom: 26px; }
+.auth-form { display: flex; flex-direction: column; }
+.auth-form > label:first-child { margin-top: 0; }
 .auth-alt { text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-2); }
 .auth-alt a { color: var(--cyan); text-decoration: none; }
+.auth-submit { width: 100%; justify-content: center; margin-top: 22px; padding: 13px; font-size: 15px; }
 .auth-error {
-    margin-top: 16px;
+    margin-top: 14px;
+    margin-bottom: 2px;
     padding: 10px 14px;
     border-radius: 10px;
     background: rgba(251, 113, 133, 0.1);

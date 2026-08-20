@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Login · Ironbound</title>
-<script src="{{ url_for('static', filename='js/theme.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}?v=12"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=12">
 <meta name="theme-color" content="#0b0f1a">
 <meta name="color-scheme" content="dark light">
 </head>
@@ -28,7 +28,7 @@
     </div>
     <div class="auth-tag">Turn your lifts and runs into RPG stats</div>
 
-    <form method="POST">
+    <form method="POST" class="auth-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="username">Username</label>
         <input type="text" id="username" name="username" required autofocus autocomplete="username">
@@ -37,18 +37,9 @@
             <input type="password" id="password" name="password" required autocomplete="current-password">
             <button type="button" class="pw-toggle" data-pw-target="password" aria-label="Show password">👁</button>
         </div>
-        <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center; margin-top:20px;">Log in</button>
         {% if error %}<div class="auth-error" role="alert">{{ error }}</div>{% endif %}
+        <button class="btn btn-primary auth-submit" type="submit">Log in</button>
     </form>
-
-    <div class="auth-stats" aria-hidden="true">
-        <span class="auth-stat r-a">STR</span><span class="auth-stat r-b">END</span><span class="auth-stat r-b">AGI</span><span class="auth-stat r-c">VIT</span><span class="auth-stat r-d">POW</span><span class="auth-stat r-e">FLX</span>
-    </div>
-    <div class="auth-features">
-        <span>Six RPG stats built from real gym numbers</span>
-        <span>Score against Average → Healthy → Enthusiast → Pro</span>
-        <span>Track trends, levels, ranks, and training streaks</span>
-    </div>
 
     <p class="auth-alt">New here? <a href="/signup">Create an account</a></p>
 </div>
@@ -56,6 +47,6 @@
 {% set flashes = get_flashed_messages(with_categories=true) %}
 <div id="flash-data" {% if flashes %}data-messages="{{ flashes | tojson | forceescape }}"{% endif %} hidden></div>
 <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
-<script src="{{ url_for('static', filename='js/main.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=12"></script>
 </body>
 </html>
