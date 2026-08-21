@@ -33,27 +33,30 @@
         });
     }
 
-    // ---------- toast notifications (rendered from server flash messages) ----------
+    // ---------- toast notifications (server flashes + client events) ----------
+    function pushToast(cat, msg) {
+        const host = document.getElementById('toasts');
+        if (!host) return;
+        const el = document.createElement('div');
+        el.className = 'toast toast-' + (cat || 'info');
+        el.setAttribute('role', cat === 'error' ? 'alert' : 'status');
+        el.textContent = msg;
+        host.appendChild(el);
+        requestAnimationFrame(function () { el.classList.add('show'); });
+        setTimeout(function () {
+            el.classList.remove('show');
+            setTimeout(function () { el.remove(); }, 320);
+        }, 4200);
+    }
+
     function initToasts() {
         const dataEl = document.getElementById('flash-data');
-        const host = document.getElementById('toasts');
-        if (!dataEl || !host || !dataEl.dataset.messages) return;
+        if (!dataEl || !dataEl.dataset.messages) return;
         let messages;
         try { messages = JSON.parse(dataEl.dataset.messages); } catch (e) { return; }
         messages.forEach(function (pair) {
             if (!Array.isArray(pair)) return;
-            const cat = pair[0] || 'info';
-            const msg = pair[1] || '';
-            const el = document.createElement('div');
-            el.className = 'toast toast-' + cat;
-            el.setAttribute('role', cat === 'error' ? 'alert' : 'status');
-            el.textContent = msg;
-            host.appendChild(el);
-            requestAnimationFrame(function () { el.classList.add('show'); });
-            setTimeout(function () {
-                el.classList.remove('show');
-                setTimeout(function () { el.remove(); }, 320);
-            }, 4200);
+            pushToast(pair[0] || 'info', pair[1] || '');
         });
     }
 
@@ -810,6 +813,142 @@
         });
     }
 
+    // ---------- offline log queue (IndexedDB -> /sync/queue on reconnect) ----------
+    var ibQueue = (function () {
+        var DB_NAME = 'ironbound-queue';
+        var STORE = 'pending';
+        function open() {
+            return new Promise(function (resolve, reject) {
+                if (!('indexedDB' in window)) { reject(new Error('no indexedDB')); return; }
+                var req = indexedDB.open(DB_NAME, 1);
+                req.onupgradeneeded = function () {
+                    if (!req.result.objectStoreNames.contains(STORE)) {
+                        req.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+                req.onsuccess = function () { resolve(req.result); };
+                req.onerror = function () { reject(req.error); };
+            });
+        }
+        function run(mode, fn) {
+            return open().then(function (db) {
+                return new Promise(function (resolve, reject) {
+                    var result;
+                    var tx = db.transaction(STORE, mode);
+                    var request = fn(tx.objectStore(STORE));
+                    if (request && 'onsuccess' in request) {
+                        request.onsuccess = function () { result = request.result; };
+                    }
+                    tx.oncomplete = function () { db.close(); resolve(result); };
+                    tx.onerror = function () { db.close(); reject(tx.error); };
+                    tx.onabort = function () { db.close(); reject(tx.error); };
+                });
+            });
+        }
+        return {
+            add: function (item) { return run('readwrite', function (s) { return s.add(item); }); },
+            all: function () { return run('readonly', function (s) { return s.getAll(); }); },
+            count: function () { return run('readonly', function (s) { return s.count(); }); },
+            remove: function (ids) {
+                return run('readwrite', function (s) {
+                    ids.forEach(function (id) { s.delete(id); });
+                    return null;
+                });
+            }
+        };
+    })();
+
+    function updateQueueBadge(n) {
+        var badge = document.getElementById('queueBadge');
+        if (!badge) return;
+        var text = document.getElementById('queueBadgeText');
+        if (n > 0) {
+            badge.hidden = false;
+            if (text) text.textContent = n + ' saved offline';
+        } else {
+            badge.hidden = true;
+        }
+    }
+
+    function flushQueue() {
+        if (navigator.onLine === false) return Promise.resolve(0);
+        if (!document.querySelector('meta[name="csrf-token"]')) return Promise.resolve(0);
+        return ibQueue.all().then(function (items) {
+            if (!items || !items.length) return 0;
+            var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            return fetch('/sync/queue', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
+                body: JSON.stringify({
+                    items: items.map(function (it) {
+                        return { type: it.type, data: it.data, client_id: it.client_id };
+                    })
+                })
+            }).then(function (res) {
+                if (!res.ok) throw new Error('sync failed');
+                return res.json();
+            }).then(function (json) {
+                var acked = [];
+                var failed = 0;
+                (json.results || []).forEach(function (r, i) {
+                    if (r && r.ok) acked.push(items[i].id);
+                    else failed += 1;
+                });
+                var done = acked.length
+                    ? ibQueue.remove(acked).then(function () { return acked.length; })
+                    : Promise.resolve(0);
+                return done.then(function (synced) { return { synced: synced, failed: failed }; });
+            });
+        }).then(function (out) {
+            var synced = out && out.synced ? out.synced : 0;
+            var failed = out && out.failed ? out.failed : 0;
+            return ibQueue.count().then(updateQueueBadge).then(function () {
+                if (synced > 0) {
+                    pushToast('success', 'Synced ' + synced + ' offline ' + (synced === 1 ? 'log' : 'logs') + ' — welcome back ⚔');
+                }
+                if (failed > 0) {
+                    pushToast('error', failed + ' offline ' + (failed === 1 ? 'entry was' : 'entries were') + ' invalid and dropped.');
+                }
+                return synced;
+            });
+        }).catch(function () { return 0; });
+    }
+
+    function initOfflineQueue() {
+        if (!('indexedDB' in window)) return;
+        Array.prototype.forEach.call(document.querySelectorAll('form[data-queueable]'), function (form) {
+            form.addEventListener('submit', function (e) {
+                if (navigator.onLine !== false) return; // online -> normal POST
+                e.preventDefault();
+                var btn = form.querySelector('[type="submit"]');
+                if (btn) btn.disabled = true;
+                var data = {};
+                new FormData(form).forEach(function (value, key) {
+                    if (key !== 'csrf_token') data[key] = value;
+                });
+                ibQueue.add({
+                    type: form.dataset.logType,
+                    data: data,
+                    client_id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10),
+                    queued_at: new Date().toISOString()
+                }).then(function () {
+                    return ibQueue.count();
+                }).then(function (n) {
+                    updateQueueBadge(n);
+                    pushToast('info', 'Offline — entry saved and will sync when you reconnect.');
+                    setTimeout(function () { window.location.href = '/logs'; }, 700);
+                }).catch(function () {
+                    if (btn) btn.disabled = false;
+                    pushToast('error', 'Could not save the entry offline. Please try again.');
+                });
+            });
+        });
+        window.addEventListener('online', function () { flushQueue(); });
+        ibQueue.count().then(updateQueueBadge).catch(function () {});
+        flushQueue();
+    }
+
     // ---------- boot ----------
     document.addEventListener('DOMContentLoaded', function () {
         initTheme();
@@ -828,5 +967,6 @@
         initQuickFab();
         initAurora();
         initServiceWorker();
+        initOfflineQueue();
     });
 })();

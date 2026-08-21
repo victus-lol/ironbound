@@ -1008,6 +1008,126 @@ class TestIronbound(unittest.TestCase):
         self.assertIn("/signup", sw_text)
         self.assertIn("network-first", sw_text)
 
+    # ---------- offline sync queue ----------
+
+    def _sync_post(self, c, items, token=None, with_token=True):
+        if token is None:
+            token = csrf_of(c.get("/logs").get_data(as_text=True))
+        headers = {"X-CSRF-Token": token} if with_token else {}
+        return c.post(
+            "/sync/queue",
+            data=json.dumps({"items": items}),
+            content_type="application/json",
+            headers=headers,
+        )
+
+    def test_sync_queue_creates_all_log_types(self):
+        c = self.app.test_client()
+        self.signup(c, {"username": "sync_hero", "password": "syncPass1", "gender": "male"})
+        r = self._sync_post(c, [
+            {"type": "strength", "data": {"lift": "bench", "weight_kg": "90", "reps": "5",
+                                          "logged_at": "2026-08-01T10:00"}},
+            {"type": "cardio", "data": {"distance_km": "5", "minutes": "25",
+                                        "logged_at": "2026-08-01T11:00"}},
+            {"type": "body", "data": {"waist_cm": "85", "neck_cm": "38", "height_cm": "178",
+                                      "logged_at": "2026-08-01T12:00"}},
+            {"type": "performance", "data": {"vertical_jump": "55",
+                                             "logged_at": "2026-08-01T13:00"}},
+            {"type": "exercise", "client_id": "ex-cid-1",
+             "data": {"exercise_key": "Legs (Quads/Glutes)", "sets": "3", "reps": "5",
+                      "weight_kg": "100", "logged_at": "2026-08-01T14:00"}},
+        ])
+        self.assertEqual(r.status_code, 200)
+        body = json.loads(r.get_data(as_text=True))
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["created"], 5)
+        self.assertTrue(all(res["ok"] for res in body["results"]))
+        uid = self.user_id("sync_hero")
+        with app_module.db_conn() as conn:
+            # bench set + the squat dual-path row from the queued exercise log
+            self.assertEqual(conn.execute(
+                "SELECT COUNT(*) AS n FROM strength_logs WHERE user_id = ?", (uid,)
+            ).fetchone()["n"], 2)
+            dual = conn.execute(
+                "SELECT * FROM strength_logs WHERE user_id = ? AND lift = 'squat'", (uid,)
+            ).fetchone()
+            ex = conn.execute(
+                "SELECT * FROM exercise_logs WHERE user_id = ?", (uid,)
+            ).fetchone()
+            self.assertIsNotNone(dual)
+            self.assertEqual(dual["source_exercise_log_id"], ex["id"])
+            self.assertEqual(dual["client_id"], "ex-cid-1-s")
+            for table in ("cardio_logs", "body_logs", "performance_logs"):
+                self.assertEqual(conn.execute(
+                    f"SELECT COUNT(*) AS n FROM {table} WHERE user_id = ?", (uid,)
+                ).fetchone()["n"], 1)
+
+    def test_sync_queue_skips_bad_items_without_failing_batch(self):
+        c = self.app.test_client()
+        self.signup(c, {"username": "sync_mixed", "password": "syncPass1", "gender": "male"})
+        r = self._sync_post(c, [
+            {"type": "strength", "data": {"lift": "bench", "weight_kg": "60", "reps": "5"}},
+            {"type": "strength", "data": {"lift": "bench", "weight_kg": "-5", "reps": "5"}},  # invalid
+            {"type": "alien", "data": {}},              # unknown type
+            {"type": "cardio"},                          # missing data
+            "not-a-dict",                                # malformed entry
+            {"type": "cardio", "data": {"distance_km": "3", "minutes": "15"}},
+        ])
+        self.assertEqual(r.status_code, 200)
+        body = json.loads(r.get_data(as_text=True))
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["created"], 2)
+        flags = [res["ok"] for res in body["results"]]
+        self.assertEqual(flags, [True, False, False, False, False, True])
+        uid = self.user_id("sync_mixed")
+        with app_module.db_conn() as conn:
+            self.assertEqual(conn.execute(
+                "SELECT COUNT(*) AS n FROM strength_logs WHERE user_id = ?", (uid,)
+            ).fetchone()["n"], 1)
+            self.assertEqual(conn.execute(
+                "SELECT COUNT(*) AS n FROM cardio_logs WHERE user_id = ?", (uid,)
+            ).fetchone()["n"], 1)
+
+    def test_sync_queue_is_idempotent_on_client_id(self):
+        c = self.app.test_client()
+        self.signup(c, {"username": "sync_dupe", "password": "syncPass1", "gender": "male"})
+        item = {"type": "cardio", "client_id": "same-cid",
+                "data": {"distance_km": "4", "minutes": "20"}}
+        self._sync_post(c, [item])
+        r = self._sync_post(c, [item])  # replay after a dropped response
+        body = json.loads(r.get_data(as_text=True))
+        self.assertTrue(body["ok"])
+        uid = self.user_id("sync_dupe")
+        with app_module.db_conn() as conn:
+            self.assertEqual(conn.execute(
+                "SELECT COUNT(*) AS n FROM cardio_logs WHERE user_id = ?", (uid,)
+            ).fetchone()["n"], 1)
+
+    def test_sync_queue_requires_auth_and_csrf(self):
+        # anonymous POST without a token -> rejected by the global CSRF hook
+        anon = self.app.test_client()
+        r = anon.post("/sync/queue", data=json.dumps({"items": []}),
+                      content_type="application/json")
+        self.assertEqual(r.status_code, 400)
+        # anonymous POST WITH a valid token -> passes CSRF, then @login_required
+        # redirects to the login page instead of creating anything
+        r = anon.post("/sync/queue", data=json.dumps({"items": []}),
+                      content_type="application/json",
+                      headers={"X-CSRF-Token": csrf_of(anon.get("/login").get_data(as_text=True))})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/login", r.headers.get("Location", ""))
+        # logged in but no CSRF token -> rejected by the global hook
+        c = self.app.test_client()
+        self.signup(c, {"username": "sync_csrf", "password": "syncPass1", "gender": "male"})
+        r = self._sync_post(c, [{"type": "cardio", "data": {"distance_km": "2", "minutes": "10"}}],
+                            with_token=False)
+        self.assertEqual(r.status_code, 400)
+        uid = self.user_id("sync_csrf")
+        with app_module.db_conn() as conn:
+            self.assertEqual(conn.execute(
+                "SELECT COUNT(*) AS n FROM cardio_logs WHERE user_id = ?", (uid,)
+            ).fetchone()["n"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

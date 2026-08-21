@@ -8,7 +8,7 @@
 <div class="grid form-grid">
     <div class="card animate">
         <h3 class="card-title">{% if editing %}✏️ Edit this test{% else %}🔥 Log field tests{% endif %}</h3>
-        <form id="performanceForm" method="POST"
+        <form id="performanceForm" method="POST" data-queueable data-log-type="performance"
               action="{% if log %}{{ url_for('edit_log', log_type='performance', log_id=log.id) }}{% else %}{{ url_for('log_performance') }}{% endif %}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="vertical_jump">Vertical jump (cm)</label>

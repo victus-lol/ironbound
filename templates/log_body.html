@@ -8,7 +8,7 @@
 <div class="grid form-grid">
     <div class="card animate">
         <h3 class="card-title">{% if editing %}✏️ Edit these measurements{% else %}📏 Log body metrics{% endif %}</h3>
-        <form id="bodyForm" method="POST"
+        <form id="bodyForm" method="POST" data-queueable data-log-type="body"
               action="{% if log %}{{ url_for('edit_log', log_type='body', log_id=log.id) }}{% else %}{{ url_for('log_body') }}{% endif %}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="waist_cm">Waist (cm)</label>

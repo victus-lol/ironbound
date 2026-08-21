@@ -13,7 +13,7 @@
 <div class="grid form-grid">
     <div class="card animate">
         <h3 class="card-title">{% if editing %}✏️ Edit this session{% else %}🎯 Log an exercise{% endif %}</h3>
-        <form id="exerciseForm" method="POST"
+        <form id="exerciseForm" method="POST" data-queueable data-log-type="exercise"
               action="{% if log %}{{ url_for('edit_log', log_type='exercise', log_id=log.id) }}{% else %}{{ url_for('log_exercise') }}{% endif %}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="exerciseKey">Exercise <span class="muted" style="font-weight:400;">(any from the training library)</span></label>

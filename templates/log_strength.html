@@ -8,7 +8,7 @@
 <div class="grid form-grid">
     <div class="card animate">
         <h3 class="card-title">{% if editing %}✏️ Edit this set{% else %}🏋️ Log a strength set{% endif %}</h3>
-        <form id="strengthForm" method="POST" data-bw="{{ bodyweight or 0 }}"
+        <form id="strengthForm" method="POST" data-queueable data-log-type="strength" data-bw="{{ bodyweight or 0 }}"
               action="{% if log %}{{ url_for('edit_log', log_type='strength', log_id=log.id) }}{% else %}{{ url_for('log_strength') }}{% endif %}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="lift">Lift</label>

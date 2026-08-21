@@ -1271,6 +1271,30 @@ textarea:focus-visible,
 .toast-error { border-left-color: var(--red); }
 .toast-info { border-left-color: var(--cyan); }
 
+/* offline queue badge (fixed pill, bottom-left; hidden until entries are queued) */
+.queue-badge {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 290;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: var(--surface-solid);
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--amber, #f5a524);
+    color: var(--text-0);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: var(--shadow);
+}
+.queue-badge:hover { border-color: var(--cyan); }
+.queue-badge-ico { font-size: 14px; }
+.queue-badge[hidden] { display: none; }
+
 /* show/hide password */
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 46px; }

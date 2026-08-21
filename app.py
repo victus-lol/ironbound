@@ -314,6 +314,19 @@ MIGRATIONS = {
     6: [
         "ALTER TABLE strength_logs ADD COLUMN source_exercise_log_id INTEGER",
     ],
+    7: [
+        # Offline sync: client-generated id makes replayed queue entries idempotent.
+        "ALTER TABLE strength_logs ADD COLUMN client_id TEXT",
+        "ALTER TABLE cardio_logs ADD COLUMN client_id TEXT",
+        "ALTER TABLE body_logs ADD COLUMN client_id TEXT",
+        "ALTER TABLE performance_logs ADD COLUMN client_id TEXT",
+        "ALTER TABLE exercise_logs ADD COLUMN client_id TEXT",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_strength_client ON strength_logs(user_id, client_id) WHERE client_id IS NOT NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_cardio_client ON cardio_logs(user_id, client_id) WHERE client_id IS NOT NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_body_client ON body_logs(user_id, client_id) WHERE client_id IS NOT NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_performance_client ON performance_logs(user_id, client_id) WHERE client_id IS NOT NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_exercise_client ON exercise_logs(user_id, client_id) WHERE client_id IS NOT NULL",
+    ],
 }
 
 
@@ -333,7 +346,13 @@ def init_db():
         for target in sorted(MIGRATIONS):
             if target > version:
                 for stmt in MIGRATIONS[target]:
-                    conn.execute(stmt)
+                    try:
+                        conn.execute(stmt)
+                    except sqlite3.OperationalError as exc:
+                        # SQLite DDL autocommits, so a partially-applied migration
+                        # must be safe to re-run: re-adding an existing column is fine.
+                        if "duplicate column name" not in str(exc):
+                            raise
                 conn.execute("INSERT INTO schema_version (version) VALUES (?)", (target,))
         # an existing pre-migration DB might have no hip_cm column
         cols = [r["name"] for r in conn.execute("PRAGMA table_info(body_logs)").fetchall()]
@@ -490,8 +509,9 @@ class ValidationError(Exception):
     pass
 
 
-def form_float(name, label, minv=None, maxv=None, required=True):
-    raw = request.form.get(name, "").strip()
+def form_float(name, label, minv=None, maxv=None, required=True, data=None):
+    src = request.form if data is None else data
+    raw = str(src.get(name, "") or "").strip()
     if raw == "":
         if required:
             raise ValidationError(f"{label} is required.")
@@ -507,8 +527,9 @@ def form_float(name, label, minv=None, maxv=None, required=True):
     return value
 
 
-def form_int(name, label, minv=None, maxv=None, required=True):
-    raw = request.form.get(name, "").strip()
+def form_int(name, label, minv=None, maxv=None, required=True, data=None):
+    src = request.form if data is None else data
+    raw = str(src.get(name, "") or "").strip()
     if raw == "":
         if required:
             raise ValidationError(f"{label} is required.")
@@ -524,9 +545,10 @@ def form_int(name, label, minv=None, maxv=None, required=True):
     return value
 
 
-def form_logged_at(name="logged_at"):
+def form_logged_at(name="logged_at", data=None):
     """Accept an ISO datetime-local value (e.g. 2026-08-10T11:30); default to now."""
-    raw = request.form.get(name, "").strip()
+    src = request.form if data is None else data
+    raw = str(src.get(name, "") or "").strip()
     if not raw:
         return datetime.now().isoformat()
     try:
@@ -2866,25 +2888,29 @@ def delete_log_route(log_type, log_id):
     return redirect(url_for("my_logs"))
 
 
-def _validate_log_form(log_type, editing=False):
-    """Validate a log form; returns a dict of clean values (raises ValidationError)."""
-    logged_at = form_logged_at()
+def _validate_log_form(log_type, editing=False, data=None):
+    """Validate a log form; returns a dict of clean values (raises ValidationError).
+
+    Reads from request.form by default, or from `data` (a plain dict) when given —
+    used by the offline sync endpoint to validate queued payloads."""
+    logged_at = form_logged_at(data=data)
     if log_type == "strength":
-        lift = request.form.get("lift", "")
+        lift = str((request.form if data is None else data).get("lift", "") or "")
         if lift not in LIFT_LABELS:
             raise ValidationError("Pick a valid lift.")
-        weight = form_float("weight_kg", "Weight", minv=1, maxv=1000)
-        reps = form_int("reps", "Reps", minv=1, maxv=1000)
+        weight = form_float("weight_kg", "Weight", minv=1, maxv=1000, data=data)
+        reps = form_int("reps", "Reps", minv=1, maxv=1000, data=data)
         return {"lift": lift, "weight_kg": weight, "reps": reps, "logged_at": logged_at}
     if log_type == "exercise":
-        key = request.form.get("exercise_key", "")
+        src = request.form if data is None else data
+        key = str(src.get("exercise_key", "") or "")
         item = exercise_by_key(key)
         if not item:
             raise ValidationError("Pick an exercise from the library.")
-        reps = form_int("reps", "Reps", minv=1, maxv=1000, required=False)
-        weight = form_float("weight_kg", "Weight", minv=1, maxv=1000, required=False)
-        minutes = form_float("minutes", "Duration", minv=0.5, maxv=1440, required=False)
-        sets = form_int("sets", "Sets", minv=1, maxv=50, required=False)
+        reps = form_int("reps", "Reps", minv=1, maxv=1000, required=False, data=data)
+        weight = form_float("weight_kg", "Weight", minv=1, maxv=1000, required=False, data=data)
+        minutes = form_float("minutes", "Duration", minv=0.5, maxv=1440, required=False, data=data)
+        sets = form_int("sets", "Sets", minv=1, maxv=50, required=False, data=data)
         if sets is None:
             sets = 1
         if minutes is not None and (reps is not None or weight is not None):
@@ -2897,28 +2923,28 @@ def _validate_log_form(log_type, editing=False):
                 "feeds_stat": item["feeds_stat"], "sets": sets, "reps": reps,
                 "weight_kg": weight, "minutes": minutes, "logged_at": logged_at}
     if log_type == "cardio":
-        distance = form_float("distance_km", "Distance", minv=0.05, maxv=200)
-        minutes = form_float("minutes", "Time", minv=0.5, maxv=1440)
+        distance = form_float("distance_km", "Distance", minv=0.05, maxv=200, data=data)
+        minutes = form_float("minutes", "Time", minv=0.5, maxv=1440, data=data)
         return {"distance_km": distance, "minutes": minutes, "logged_at": logged_at}
     if log_type == "body":
-        waist = form_float("waist_cm", "Waist", minv=30, maxv=300)
-        neck = form_float("neck_cm", "Neck", minv=20, maxv=200)
-        height = form_float("height_cm", "Height", minv=50, maxv=250)
+        waist = form_float("waist_cm", "Waist", minv=30, maxv=300, data=data)
+        neck = form_float("neck_cm", "Neck", minv=20, maxv=200, data=data)
+        height = form_float("height_cm", "Height", minv=50, maxv=250, data=data)
         if waist <= neck:
             raise ValidationError("Waist must be larger than neck.")
-        hip_raw = request.form.get("hip_cm", "").strip()
+        hip_raw = str((request.form if data is None else data).get("hip_cm", "") or "").strip()
         hip = None
         if hip_raw:
-            hip = form_float("hip_cm", "Hips", minv=30, maxv=300)
+            hip = form_float("hip_cm", "Hips", minv=30, maxv=300, data=data)
         return {"waist_cm": waist, "neck_cm": neck, "height_cm": height,
                 "hip_cm": hip, "logged_at": logged_at}
     # performance
     fields = {}
     for col, f in [("vertical_jump_cm", "vertical_jump"), ("sprint_40m_s", "sprint"),
                    ("sit_and_reach_cm", "sit_and_reach")]:
-        raw = request.form.get(f, "").strip()
+        raw = str((request.form if data is None else data).get(f, "") or "").strip()
         if raw:
-            fields[col] = form_float(f, f.replace("_", " ").title())
+            fields[col] = form_float(f, f.replace("_", " ").title(), data=data)
     if not fields:
         raise ValidationError("Enter at least one field-test result.")
     return {**fields, "logged_at": logged_at}
@@ -2945,82 +2971,53 @@ def _log_render(log_type, error=None, **extra):
     )
 
 
-@app.route("/log/strength", methods=["GET", "POST"])
-@login_required
-def log_strength():
-    if request.method == "POST":
-        try:
-            form = _validate_log_form("strength")
-        except ValidationError as e:
-            return _log_render("strength", error=str(e)), 400
-        uid = current_user_id()
+def _insert_log(log_type, form, uid, client_id=None):
+    """Insert one validated log row (shared by the web routes and the offline
+    sync endpoint). Returns a human-readable success message. `client_id` makes
+    replayed offline entries idempotent: a repeat with the same id is a no-op."""
+    table = LOG_SCHEMA[log_type]["table"]
+    if client_id:
+        with db_conn() as conn:
+            dup = conn.execute(
+                f"SELECT 1 FROM {table} WHERE user_id = ? AND client_id = ?",
+                (uid, client_id),
+            ).fetchone()
+        if dup:
+            return "Already synced ✔️"
+    if log_type == "strength":
         best_before = best_1rm(uid, form["lift"])
         with db_conn() as conn:
             conn.execute(
-                "INSERT INTO strength_logs (user_id, lift, weight_kg, reps, logged_at) VALUES (?, ?, ?, ?, ?)",
-                (uid, form["lift"], form["weight_kg"], form["reps"], form["logged_at"]),
+                "INSERT INTO strength_logs (user_id, lift, weight_kg, reps, logged_at, client_id) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (uid, form["lift"], form["weight_kg"], form["reps"], form["logged_at"], client_id),
             )
         new_est = round(epley_1rm(form["weight_kg"], form["reps"]), 1)
         if best_before is None or new_est > best_before:
-            flash(f"New {LIFT_LABELS[form['lift']]} PR — {new_est} kg 🎉", "success")
-        else:
-            flash("Strength set logged 💪", "success")
-        return redirect(url_for("dashboard"))
-    return _log_render("strength")
-
-
-@app.route("/log/cardio", methods=["GET", "POST"])
-@login_required
-def log_cardio():
-    if request.method == "POST":
-        try:
-            form = _validate_log_form("cardio")
-        except ValidationError as e:
-            return _log_render("cardio", error=str(e)), 400
-        uid = current_user_id()
+            return f"New {LIFT_LABELS[form['lift']]} PR — {new_est} kg 🎉"
+        return "Strength set logged 💪"
+    if log_type == "cardio":
         best_before = best_vo2max(uid)
         with db_conn() as conn:
             conn.execute(
-                "INSERT INTO cardio_logs (user_id, distance_km, minutes, logged_at) VALUES (?, ?, ?, ?)",
-                (uid, form["distance_km"], form["minutes"], form["logged_at"]),
+                "INSERT INTO cardio_logs (user_id, distance_km, minutes, logged_at, client_id) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (uid, form["distance_km"], form["minutes"], form["logged_at"], client_id),
             )
         new_vo2 = estimate_vo2max_cooper(form["distance_km"] * (12.0 / form["minutes"]))
         if best_before is None or new_vo2 > best_before:
-            flash(f"New VO₂max record — {new_vo2} ml/kg/min 🏃", "success")
-        else:
-            flash("Run logged 🏃", "success")
-        return redirect(url_for("dashboard"))
-    return _log_render("cardio")
-
-
-@app.route("/log/body", methods=["GET", "POST"])
-@login_required
-def log_body():
-    if request.method == "POST":
-        try:
-            form = _validate_log_form("body")
-        except ValidationError as e:
-            return _log_render("body", error=str(e)), 400
+            return f"New VO₂max record — {new_vo2} ml/kg/min 🏃"
+        return "Run logged 🏃"
+    if log_type == "body":
         with db_conn() as conn:
             conn.execute(
-                "INSERT INTO body_logs (user_id, waist_cm, neck_cm, height_cm, hip_cm, logged_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (current_user_id(), form["waist_cm"], form["neck_cm"], form["height_cm"],
-                 form["hip_cm"], form["logged_at"]),
+                "INSERT INTO body_logs (user_id, waist_cm, neck_cm, height_cm, hip_cm, logged_at, client_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (uid, form["waist_cm"], form["neck_cm"], form["height_cm"],
+                 form["hip_cm"], form["logged_at"], client_id),
             )
-        flash("Body metrics saved 📏", "success")
-        return redirect(url_for("dashboard"))
-    return _log_render("body")
-
-
-@app.route("/log/performance", methods=["GET", "POST"])
-@login_required
-def log_performance():
-    if request.method == "POST":
-        try:
-            form = _validate_log_form("performance")
-        except ValidationError as e:
-            return _log_render("performance", error=str(e)), 400
-        uid = current_user_id()
+        return "Body metrics saved 📏"
+    if log_type == "performance":
         new_prs = []
         if form.get("vertical_jump_cm"):
             prev = best_vertical_jump(uid)
@@ -3037,15 +3034,101 @@ def log_performance():
         with db_conn() as conn:
             conn.execute(
                 "INSERT INTO performance_logs "
-                "(user_id, vertical_jump_cm, sprint_40m_s, sit_and_reach_cm, logged_at) "
-                "VALUES (?, ?, ?, ?, ?)",
+                "(user_id, vertical_jump_cm, sprint_40m_s, sit_and_reach_cm, logged_at, client_id) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
                 (uid, form.get("vertical_jump_cm"),
-                 form.get("sprint_40m_s"), form.get("sit_and_reach_cm"), form["logged_at"]),
+                 form.get("sprint_40m_s"), form.get("sit_and_reach_cm"), form["logged_at"], client_id),
             )
         if new_prs:
-            flash("New PR" + ("s" if len(new_prs) > 1 else "") + ": " + ", ".join(new_prs) + " 🔥", "success")
-        else:
-            flash("Field test logged 🔥", "success")
+            return "New PR" + ("s" if len(new_prs) > 1 else "") + ": " + ", ".join(new_prs) + " 🔥"
+        return "Field test logged 🔥"
+    # exercise (with big-3 dual-path into strength_logs)
+    stats_before, _, _ = compute_stats(uid)
+    dual_lift = BIG3_EXERCISE_TO_LIFT.get(form["exercise_name"])
+    with db_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO exercise_logs (user_id, exercise_key, exercise_name, feeds_stat, "
+            "sets, reps, weight_kg, minutes, logged_at, client_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (uid, form["exercise_key"], form["exercise_name"], form["feeds_stat"],
+             form["sets"], form.get("reps"), form.get("weight_kg"), form.get("minutes"),
+             form["logged_at"], client_id),
+        )
+        # Big-3 with weight × reps also counts toward the 1RM benchmark.
+        if (dual_lift and form.get("weight_kg") is not None
+                and form.get("reps") is not None and form.get("minutes") is None):
+            conn.execute(
+                "INSERT INTO strength_logs (user_id, lift, weight_kg, reps, logged_at, "
+                "source_exercise_log_id, client_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (uid, dual_lift, form["weight_kg"], form["reps"], form["logged_at"],
+                 cur.lastrowid, (client_id + "-s") if client_id else None),
+            )
+    _clear_stats_cache()
+    stats_after, _, _ = compute_stats(uid)
+    stat = form["feeds_stat"]
+    delta = 0.0
+    if stats_after.get(stat) is not None and stats_before.get(stat) is not None:
+        delta = round(stats_after[stat] - stats_before[stat], 1)
+    elif stats_after.get(stat) is not None:
+        delta = round(stats_after[stat], 1)
+    extra = f" and {dual_lift} 1RM" if dual_lift else ""
+    if delta > 0:
+        return f"{form['exercise_name']} logged — {STAT_META[stat]['label']} credit +{delta}{extra} 🎯"
+    return f"{form['exercise_name']} logged{extra} 🎯"
+
+
+@app.route("/log/strength", methods=["GET", "POST"])
+@login_required
+def log_strength():
+    if request.method == "POST":
+        try:
+            form = _validate_log_form("strength")
+            message = _insert_log("strength", form, current_user_id())
+        except ValidationError as e:
+            return _log_render("strength", error=str(e)), 400
+        flash(message, "success")
+        return redirect(url_for("dashboard"))
+    return _log_render("strength")
+
+
+@app.route("/log/cardio", methods=["GET", "POST"])
+@login_required
+def log_cardio():
+    if request.method == "POST":
+        try:
+            form = _validate_log_form("cardio")
+            message = _insert_log("cardio", form, current_user_id())
+        except ValidationError as e:
+            return _log_render("cardio", error=str(e)), 400
+        flash(message, "success")
+        return redirect(url_for("dashboard"))
+    return _log_render("cardio")
+
+
+@app.route("/log/body", methods=["GET", "POST"])
+@login_required
+def log_body():
+    if request.method == "POST":
+        try:
+            form = _validate_log_form("body")
+            message = _insert_log("body", form, current_user_id())
+        except ValidationError as e:
+            return _log_render("body", error=str(e)), 400
+        flash(message, "success")
+        return redirect(url_for("dashboard"))
+    return _log_render("body")
+
+
+@app.route("/log/performance", methods=["GET", "POST"])
+@login_required
+def log_performance():
+    if request.method == "POST":
+        try:
+            form = _validate_log_form("performance")
+            message = _insert_log("performance", form, current_user_id())
+        except ValidationError as e:
+            return _log_render("performance", error=str(e)), 400
+        flash(message, "success")
         return redirect(url_for("dashboard"))
     return _log_render("performance")
 
@@ -3071,42 +3154,11 @@ def log_exercise():
     if request.method == "POST":
         try:
             form = _validate_log_form("exercise")
+            message = _insert_log("exercise", form, uid)
         except ValidationError as e:
             return _log_render("exercise", error=str(e),
                                exercise_library=_exercise_library_data()), 400
-        stats_before, _, _ = compute_stats(uid)
-        dual_lift = BIG3_EXERCISE_TO_LIFT.get(form["exercise_name"])
-        with db_conn() as conn:
-            cur = conn.execute(
-                "INSERT INTO exercise_logs (user_id, exercise_key, exercise_name, feeds_stat, "
-                "sets, reps, weight_kg, minutes, logged_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (uid, form["exercise_key"], form["exercise_name"], form["feeds_stat"],
-                 form["sets"], form.get("reps"), form.get("weight_kg"), form.get("minutes"),
-                 form["logged_at"]),
-            )
-            # Big-3 with weight × reps also counts toward the 1RM benchmark.
-            if (dual_lift and form.get("weight_kg") is not None
-                    and form.get("reps") is not None and form.get("minutes") is None):
-                conn.execute(
-                    "INSERT INTO strength_logs (user_id, lift, weight_kg, reps, logged_at, "
-                    "source_exercise_log_id) VALUES (?, ?, ?, ?, ?, ?)",
-                    (uid, dual_lift, form["weight_kg"], form["reps"], form["logged_at"],
-                     cur.lastrowid),
-                )
-        _clear_stats_cache()
-        stats_after, _, _ = compute_stats(uid)
-        stat = form["feeds_stat"]
-        delta = 0.0
-        if stats_after.get(stat) is not None and stats_before.get(stat) is not None:
-            delta = round(stats_after[stat] - stats_before[stat], 1)
-        elif stats_after.get(stat) is not None:
-            delta = round(stats_after[stat], 1)
-        extra = f" and {dual_lift} 1RM" if dual_lift else ""
-        if delta > 0:
-            flash(f"{form['exercise_name']} logged — {STAT_META[stat]['label']} credit +{delta}{extra} 🎯", "success")
-        else:
-            flash(f"{form['exercise_name']} logged{extra} 🎯", "success")
+        flash(message, "success")
         return redirect(url_for("dashboard"))
     selected = request.args.get("exercise", "")
     return _log_render("exercise", exercise_library=_exercise_library_data(),
@@ -3294,6 +3346,63 @@ def import_data():
     imported = sum(counts.values())
     flash(f"Import complete: {imported} entries restored ✓", "success")
     return redirect(url_for("my_logs"))
+
+
+# ---------------------------------------------------------------------------
+# OFFLINE SYNC (queued log entries from the PWA)
+# ---------------------------------------------------------------------------
+
+@app.route("/sync/queue", methods=["POST"])
+@login_required
+def sync_queue():
+    """Bulk-create log entries queued offline by the browser.
+
+    Body: {"items": [{"type": "strength", "data": {...}, "client_id": "c..."}, ...]}
+    Each item is validated exactly like the web form; bad items are skipped (and
+    reported) instead of failing the whole batch. client_id makes replays
+    idempotent — a repeat is acknowledged without creating a duplicate row."""
+    uid = current_user_id()
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return _sync_json(False, "Expected a JSON object."), 400
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return _sync_json(False, "Expected an items list."), 400
+    if len(items) > 200:
+        return _sync_json(False, "Too many queued entries (max 200)."), 400
+
+    results = []
+    created = 0
+    for i, raw in enumerate(items):
+        if not isinstance(raw, dict):
+            results.append({"index": i, "ok": False, "error": "Malformed entry."})
+            continue
+        log_type = str(raw.get("type", "") or "")
+        if log_type not in LOG_SCHEMA:
+            results.append({"index": i, "ok": False, "error": "Unknown log type."})
+            continue
+        fields = raw.get("data")
+        if not isinstance(fields, dict):
+            results.append({"index": i, "ok": False, "error": "Missing data."})
+            continue
+        client_id = raw.get("client_id")
+        client_id = str(client_id).strip()[:64] if client_id else None
+        try:
+            form = _validate_log_form(log_type, data=fields)
+            message = _insert_log(log_type, form, uid, client_id=client_id)
+            created += 1
+            results.append({"index": i, "ok": True, "message": message})
+        except ValidationError as e:
+            results.append({"index": i, "ok": False, "error": str(e)})
+    return _sync_json(True, None, created=created, results=results)
+
+
+def _sync_json(ok, error=None, **extra):
+    body = {"ok": ok}
+    if error:
+        body["error"] = error
+    body.update(extra)
+    return Response(json.dumps(body), mimetype="application/json")
 
 
 # ---------------------------------------------------------------------------

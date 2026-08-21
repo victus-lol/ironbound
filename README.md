@@ -206,6 +206,16 @@ on desktop. It opens full-screen like a native app, shows an app icon, and cache
 its styles/scripts for fast repeat loads. No app store, no download beyond the
 page you already use.
 
+### Offline logging
+
+No signal in the gym's basement? Log anyway. If your device is offline when you
+submit a workout form, the entry is saved to an on-device queue (IndexedDB) and a
+"saved offline" pill appears bottom-left. The moment you're back online — or the
+next time you open the app — everything syncs to the server automatically.
+Queued entries are idempotent (a client id prevents duplicates), validated with
+the exact same rules as the web forms, and invalid entries are reported and
+dropped rather than blocking the rest of the batch.
+
 ## Day & night mode
 
 The site has both themes. The **☀️ / 🌙 button** in the top bar (and on the

@@ -8,7 +8,7 @@
 <div class="grid form-grid">
     <div class="card animate">
         <h3 class="card-title">{% if editing %}✏️ Edit this run{% else %}🏃 Log a run{% endif %}</h3>
-        <form id="cardioForm" method="POST"
+        <form id="cardioForm" method="POST" data-queueable data-log-type="cardio"
               action="{% if log %}{{ url_for('edit_log', log_type='cardio', log_id=log.id) }}{% else %}{{ url_for('log_cardio') }}{% endif %}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="distance_km">Distance covered (km)</label>
