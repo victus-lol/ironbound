@@ -338,10 +338,40 @@ def _schema_version(conn):
         return 0
 
 
+def _rebuild_legacy_users(conn):
+    """Fix databases created by the earliest versions, whose users table declared
+    `salt TEXT NOT NULL`. Modern auth (werkzeug hashes) no longer writes salt, so
+    on those databases EVERY signup failed with a bogus "username taken" error.
+    Rebuilds the table with the current DDL, preserving all rows. Idempotent: it
+    only acts when the legacy constraint is actually present."""
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'"
+    ).fetchone()
+    if not row or "salt TEXT NOT NULL" not in (row["sql"] or "").replace("\n", " "):
+        return
+    conn.execute("PRAGMA foreign_keys=OFF")  # child tables may reference users
+    conn.execute(
+        "CREATE TABLE users_new ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "username TEXT UNIQUE NOT NULL, "
+        "password_hash TEXT NOT NULL, "
+        "salt TEXT, "
+        "gender TEXT DEFAULT 'male', "
+        "created_at TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO users_new (id, username, password_hash, salt, gender, created_at) "
+        "SELECT id, username, password_hash, salt, gender, created_at FROM users"
+    )
+    conn.execute("DROP TABLE users")
+    conn.execute("ALTER TABLE users_new RENAME TO users")
+
+
 def init_db():
     with db_conn() as conn:
         conn.executescript(SCHEMA)
         conn.execute("PRAGMA journal_mode=WAL")
+        _rebuild_legacy_users(conn)
         version = _schema_version(conn)
         for target in sorted(MIGRATIONS):
             if target > version:
@@ -381,8 +411,12 @@ def create_user(username, password, gender="male"):
                 (username, password_hash, gender, datetime.now().isoformat()),
             )
             return True
-        except sqlite3.IntegrityError:
-            return False  # username taken
+        except sqlite3.IntegrityError as exc:
+            # Only a UNIQUE violation means the name is taken; anything else
+            # (e.g. a schema problem) must not masquerade as "username taken".
+            if "unique" in str(exc).lower():
+                return False
+            raise
 
 
 def verify_user(username, password):
@@ -474,6 +508,21 @@ def csrf_protect():
     expected = session.get("_csrf", "")
     if not expected or not token or not secrets.compare_digest(token, expected):
         return Response("The form has expired. Please go back, reload the page, and try again.", status=400)
+
+
+@app.before_request
+def reject_stale_session():
+    """Sessions are signed cookies that survive server restarts — and they would
+    also survive the account being deleted. Verify the session user still exists
+    (one cheap PK lookup per dynamic request) and drop zombie sessions."""
+    uid = session.get("user_id")
+    if uid is None or request.path.startswith("/static"):
+        return None
+    with db_conn() as conn:
+        row = conn.execute("SELECT 1 FROM users WHERE id = ?", (uid,)).fetchone()
+    if row is None:
+        session.clear()
+    return None
 
 
 # ---------------------------------------------------------------------------

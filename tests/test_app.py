@@ -3,6 +3,7 @@ import json
 import os
 import re
 import secrets
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -1122,6 +1123,83 @@ class TestIronbound(unittest.TestCase):
         r = self._sync_post(c, [{"type": "cardio", "data": {"distance_km": "2", "minutes": "10"}}],
                             with_token=False)
         self.assertEqual(r.status_code, 400)
+
+    # ---------- legacy schema + stale session regressions ----------
+
+    def test_signup_on_legacy_not_null_salt_schema(self):
+        """Early-version databases declared users.salt NOT NULL while modern auth
+        no longer writes salt — every signup then failed with a bogus 'username
+        taken' error. init_db must rebuild the table so signups work again."""
+        fd, legacy_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        original_path = app_module.DB_PATH
+        app_module.DB_PATH = legacy_path
+        try:
+            app_module.init_db()  # modern schema...
+            with app_module.db_conn() as conn:
+                conn.execute("PRAGMA foreign_keys=OFF")
+                conn.execute(
+                    "CREATE TABLE users_old ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "username TEXT UNIQUE NOT NULL, "
+                    "password_hash TEXT NOT NULL, "
+                    "salt TEXT NOT NULL, "
+                    "gender TEXT DEFAULT 'male', "
+                    "created_at TEXT)"
+                )
+                conn.execute(
+                    "INSERT INTO users_old (username, password_hash, salt, gender, created_at) "
+                    "VALUES ('legacyguy', 'oldhash', 'oldsalt', 'male', '2026-01-01T00:00')"
+                )
+                conn.execute("DROP TABLE users")
+                conn.execute("ALTER TABLE users_old RENAME TO users")
+            # ...downgraded to the legacy DDL behind the app's back: signup must
+            # now fail LOUDLY (schema error) instead of claiming the name is taken
+            with self.assertRaises(sqlite3.IntegrityError):
+                app_module.create_user("freshguy", "password123")
+            # restart the app -> init_db repairs the table, preserving rows
+            app_module.init_db()
+            with app_module.db_conn() as conn:
+                kept = conn.execute(
+                    "SELECT username, salt FROM users WHERE username = 'legacyguy'"
+                ).fetchone()
+            self.assertIsNotNone(kept)
+            self.assertEqual(kept["salt"], "oldsalt")
+            self.assertTrue(app_module.create_user("freshguy", "password123"))
+            # and through the full HTTP flow too
+            c = self.app.test_client()
+            r = self.signup(c, {"username": "freshgal", "password": "freshPass1", "gender": "female"})
+            self.assertEqual(r.status_code, 302)
+            self.assertIsNotNone(self.user_id("freshgal"))
+        finally:
+            app_module.DB_PATH = original_path
+            for suffix in ("", "-wal", "-shm"):
+                try:
+                    os.remove(legacy_path + suffix)
+                except OSError:
+                    pass
+
+    def test_deleted_account_kills_stale_session(self):
+        """Sessions are signed cookies that survive restarts; after account
+        deletion they must not keep granting access (zombie session)."""
+        c = self.app.test_client()
+        self.signup(c, {"username": "ghost_user", "password": "ghostPass1", "gender": "male"})
+        self.post(c, "/", {"bodyweight_kg": 80})
+        cookie = c.get_cookie("ironbound_session")
+        self.assertIsNotNone(cookie)
+        r = self.post(c, "/settings", {"action": "delete"})
+        self.assertEqual(r.status_code, 302)
+        self.assertIsNone(self.user_id("ghost_user"))
+        # replay the pre-deletion cookie exactly as a browser that kept it would
+        c.set_cookie("ironbound_session", cookie.value)
+        r = c.get("/logs")
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/login", r.headers.get("Location", ""))
+        r = c.get("/")
+        html = r.get_data(as_text=True)
+        self.assertNotIn('id="queueBadge"', html)  # no logged-in chrome on landing
+        # and the credentials are truly gone
+        self.assertIsNone(app_module.verify_user("ghost_user", "ghostPass1"))
         uid = self.user_id("sync_csrf")
         with app_module.db_conn() as conn:
             self.assertEqual(conn.execute(
