@@ -2527,7 +2527,7 @@ def dashboard():
     if uid is None:
         if request.method == "POST":
             return redirect(url_for("login"))
-        return render_template("landing.html")
+        return render_template("intro.html")
     if request.method == "POST":
         try:
             bw = form_float("bodyweight_kg", "Bodyweight", minv=20, maxv=500)
