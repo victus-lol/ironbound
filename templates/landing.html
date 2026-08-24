@@ -1,84 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IRONBOUND · Features</title>
-<meta name="description"
-      content="IRONBOUND turns real gym data into RPG‑style stats, ranks, streaks, and a weekly training plan with diet charts.">
+{% extends "base.html" %}
 
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        iron: {
-          bg: '#020617',
-          card: '#0f172a',
-          cardHover: '#1e293b',
-          border: '#1e293b',
-          borderHover: '#a855f7',
-          text: '#f8fafc',
-          textMuted: '#94a3b8',
-          textDim: '#64748b',
-        }
-      }
-    }
-  }
-};
-</script>
-
-<style>
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: #020617; }
-  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #334155; }
-  * {
-    transition-property: transform, border-color, box-shadow, background-color;
-    transition-duration: 300ms;
-    transition-timing-function: ease-out;
-  }
-  :focus-visible { outline: 2px solid #a855f7; outline-offset: 2px; }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
-  }
-</style>
-</head>
-<body class="min-h-screen bg-iron-bg text-iron-text antialiased font-[Inter]">
-
-<!-- ============================================================
-     HEADER / NAVIGATION - Fixed, isolated from content
-     ============================================================ -->
-<header class="fixed top-0 left-0 right-0 z-50 bg-iron-bg/80 backdrop-blur-md border-b border-iron-border">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between h-16">
-      <!-- Logo - Far Left -->
-      <a href="/" class="flex items-center gap-3 text-iron-text hover:opacity-80 transition-opacity" aria-label="IRONBOUND home">
-        <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 2.5l7 2.8v6.1c0 4.8-3.1 8.2-7 10.6-3.9-2.4-7-5.8-7-10.6V5.3z"/>
-          <path d="M12.8 7.5l-3.4 4.6h2.4l-.6 4.4 3.4-4.6h-2.4z"/>
-        </svg>
-        <span class="font-[Sora] font-black text-xl tracking-wider bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">IRONBOUND</span>
-      </a>
-
-      <!-- Auth Controls - Far Right -->
-      <nav class="flex items-center gap-3" aria-label="Primary actions">
-        <a href="/login" class="px-4 py-2 text-sm font-semibold text-iron-textMuted hover:text-iron-text bg-transparent border border-iron-border rounded-xl hover:border-iron-textDim transition-all duration-200">Log in</a>
-        <a href="/signup" class="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-xl shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-emerald-400 hover:shadow-cyan-500/30 transition-all duration-200">Sign up</a>
-        <button id="themeToggle" type="button" class="p-2 rounded-xl bg-iron-card border border-iron-border hover:border-iron-textDim hover:bg-iron-cardHover transition-all duration-200" aria-label="Toggle day / night mode">
-          <svg class="w-5 h-5 text-iron-textMuted" id="sunIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          <svg class="w-5 h-5 text-iron-textMuted hidden" id="moonIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </button>
-      </nav>
-    </div>
-  </div>
-</header>
-
-<!-- ============================================================
-     MAIN CONTENT - Feature Grid Section
-     ============================================================ -->
-<main class="pt-24 pb-16 sm:pt-32 sm:pb-24">
+{% block content %}
+<div class="pt-24 pb-16 sm:pt-32 sm:pb-24">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     <!-- Section Header -->
@@ -107,6 +30,7 @@ tailwind.config = {
           <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
           <div class="flex flex-col h-full">
+            <!-- Icon Container -->
             <div class="mb-5 w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center group-hover:bg-cyan-500/25 group-hover:border-cyan-500/50 transition-all duration-300">
               <svg class="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M18 20V10M12 20V4M6 20v-6"/>
@@ -114,9 +38,11 @@ tailwind.config = {
               </svg>
             </div>
 
+            <!-- Content -->
             <h3 class="text-xl font-bold text-white mb-3">Live stat cards</h3>
             <p class="text-iron-textMuted text-sm leading-relaxed flex-1">Six RPG stats with scores, tiers, trends, and exactly how many points you need for the next rank.</p>
 
+            <!-- Subtle arrow indicator -->
             <div class="mt-auto pt-4 border-t border-iron-border flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <span class="text-xs font-medium text-iron-textDim">Explore</span>
               <svg class="w-4 h-4 text-iron-textDim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -251,56 +177,4 @@ tailwind.config = {
     </section>
 
   </div>
-</main>
-
-<!-- ============================================================
-     FOOTER - Minimal
-     ============================================================ -->
-<footer class="border-t border-iron-bg/50 bg-iron-bg/50 py-12">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-    <p class="text-iron-textDim text-sm">⚔ IRONBOUND — turn real numbers into stats</p>
-  </div>
-</footer>
-
-<!-- ============================================================
-     THEME TOGGLE LOGIC
-     ============================================================ -->
-<script>
-  (function() {
-    'use strict';
-    const root = document.documentElement;
-    const themeToggle = document.getElementById('themeToggle');
-    const sunIcon = document.getElementById('sunIcon');
-    const moonIcon = document.getElementById('moonIcon');
-
-    function applyTheme(theme) {
-      if (theme === 'dark') {
-        root.setAttribute('data-theme', 'dark');
-        sunIcon.classList.add('hidden');
-        moonIcon.classList.remove('hidden');
-      } else {
-        root.removeAttribute('data-theme');
-        sunIcon.classList.remove('hidden');
-        moonIcon.classList.add('hidden');
-      }
-    }
-
-    const stored = localStorage.getItem('theme');
-    if (stored) {
-      applyTheme(stored);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      applyTheme('dark');
-    } else {
-      applyTheme('light');
-    }
-
-    themeToggle.addEventListener('click', function() {
-      const isDark = root.getAttribute('data-theme') === 'dark';
-      const next = isDark ? 'light' : 'dark';
-      localStorage.setItem('theme', next);
-      applyTheme(next);
-    });
-  })();
-</script>
-</body>
-</html>
+{% endblock %}
