@@ -16,27 +16,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=15">
 <meta name="color-scheme" content="dark light">
 {% if username %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endif %}
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        iron: {
-          bg: '#020617',
-          card: '#0f172a',
-          cardHover: '#1e293b',
-          border: '#1e293b',
-          borderHover: '#a855f7',
-          text: '#f8fafc',
-          textMuted: '#94a3b8',
-          textDim: '#64748b',
-        }
-      }
-    }
-  }
-};
-</script>
+<!-- Self-hosted Tailwind CSS - removed CDN dependency for PWA offline compatibility -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
