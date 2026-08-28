@@ -132,7 +132,8 @@ class TestIronbound(unittest.TestCase):
         r = c.get("/")
         self.assertEqual(r.status_code, 200)
         self.assertIn(b"IRONBOUND", r.data)
-        self.assertIn(b"Create your character", r.data)
+        self.assertIn(b"Turn your gym data", r.data)
+        self.assertIn(b"core features", r.data.lower())
         self.assertIn(b"/signup", r.data)
         self.assertIn(b"/login", r.data)
         # the app shell must not leak to anonymous visitors
