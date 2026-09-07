@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=15">
 <meta name="color-scheme" content="dark light">
 {% if username %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endif %}
-<!-- Self-hosted Tailwind CSS - removed CDN dependency for PWA offline compatibility -->
+<!-- Self-hosted Tailwind CSS - no CDN, keeps PWA offline + CSP script-src 'self' intact -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
 </head>
 <body>
