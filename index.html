@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#020617"/>
+<title>IRONBOUND — Turn gym data into RPG stats</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://api.open-meteo.com https://air-quality-api.open-meteo.com https://router.project-osrm.org https://ipwho.is https://overpass-api.de https://overpass.kumi.systems https://nominatim.openstreetmap.org">
+<meta name="description" content="IRONBOUND turns real gym data into RPG stats, ranks you vs athletic standards and tells you what to train next."/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff2a3a'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-weight='900' font-size='14' fill='white'%3EIB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="#top">
+      <div class="brand-mark">IB</div>
+      <div>
+        <div class="brand-title">IRON<span>BOUND</span></div>
+        <div class="brand-sub">RPG FITNESS • LEVEL UP IRL</div>
+      </div>
+    </a>
+    <nav class="nav" id="nav" aria-label="Primary">
+      <a href="#dashboard" data-view="dashboard" class="active">Dashboard</a>
+      <a href="#analytics" data-view="analytics">Analytics</a>
+      <a href="#plan" data-view="plan">Plan</a>
+      <a href="#spots" data-view="spots">Spots</a>
+      <a href="#log" data-view="log">Log</a>
+    </nav>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeBtn" aria-label="Toggle day / night mode">◐</button>
+      <button class="cta" id="exportBtn">Export</button>
+    </div>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <div class="hero-grid">
+    <div>
+      <span class="eyebrow">● PHYSIOLOGICALLY GROUNDED • NO FAKE POINTS</span>
+      <h1>Your gym data, <i>finally</i> means something.</h1>
+      <p>IRONBOUND converts weight × reps, runs and body measures into six RPG stats — <b>STR / END / AGI / VIT / POW / FLX</b> — ranks you against published athletic standards, and prescribes the single stat that gives the highest marginal gain.</p>
+      <div class="hero-cta">
+        <button class="btn-primary" onclick="document.querySelector('[data-view=log]').click()">+ Log workout</button>
+        <button class="btn-ghost" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">See how it ranks you →</button>
+      </div>
+      <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap" class="muted">
+        <span style="display:flex; gap:8px; align-items:center"><span style="width:10px;height:10px;border-radius:50%;background:var(--green)"></span> Offline-first • IndexedDB + localStorage</span>
+        <span>•</span><span>Epley 1RM • Cooper VO₂max • US-Navy BF% • v3 migrations</span>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="hud-head"><b>HUD — live preview</b><span class="level-pill"><span class="dot"></span><span id="heroLevel">Lv 7 • Adept</span></span></div>
+      <div class="radar-wrap"><canvas id="radar" width="220" height="220" aria-label="Six stat radar"></canvas></div>
+      <div class="stat-mini-grid" id="heroMini"></div>
+      <div style="margin-top:12px; display:flex; gap:8px; align-items:center; color:var(--muted); font-size:12px; font-weight:700">
+        <span style="flex:1">Path to Pro</span><span id="heroPath">68% • Weakest: FLX</span>
+      </div>
+      <div class="progress" style="margin-top:6px"><i id="heroPathBar" style="width:68%"></i></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="features" aria-labelledby="features-heading">
+  <div class="section-head">
+    <h2 id="features-heading">Not a point tracker. A character sheet.</h2>
+    <p>Every number is mapped to a tier and a gap bar. No vanity metrics — just physiology and standards.</p>
+  </div>
+  <div class="feature-grid">
+    <article class="feat">
+      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/><path d="M2 20h20"/></svg></div>
+      <h3>Live stat cards</h3>
+      <p>Six RPG stats with scores, tiers, trends, and exactly how many points you need for the next rank. Updates on every log.</p>
+      <a class="feat-link" href="#dashboard">Open HUD →</a>
+    </article>
+    <article class="feat">
+      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 12l2 2 4-5"/><circle cx="12" cy="12" r="9"/></svg></div>
+      <h3>Streaks & badges</h3>
+      <p>Fire streak, weekly volume, PR auto-detection and 15 earnable badges. XP tied to tier progression — with GitHub-style rhythm.</p>
+      <a class="feat-link" href="#dashboard">View streak →</a>
+    </article>
+    <article class="feat">
+      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>
+      <h3>Next-tier coach</h3>
+      <p>Algorithm finds your weakest stat — the fastest path to overall rank increase — and tells you exactly what to train. One-click Log it.</p>
+      <a class="feat-link" href="#dashboard">Get coached →</a>
+    </article>
+    <article class="feat">
+      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18M8 12h8M8 16h8"/></svg></div>
+      <h3>Weekly plan</h3>
+      <p>Goal + veg + allergy + free-text rules (“fast on Monday”) → Mon–Sun timetable + 4-meal allergy-aware food chart, kcal/macros scaled to BW. Every session has Log it.</p>
+      <a class="feat-link" href="#plan">Build plan →</a>
+    </article>
+    <article class="feat">
+      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/><circle cx="12" cy="12" r="5"/></svg></div>
+      <h3>Weather-smart runs</h3>
+      <p>Log-a-run checks live weather (GPS → IP fallback, Open-Meteo, no key) and recommends “hit the gym” or “go for a run”.</p>
+      <a class="feat-link" href="#log">Try log-a-run →</a>
+    </article>
+    <article class="feat">
+      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+      <h3>Backup & import</h3>
+      <p>One-click JSON/CSV export. Your data lives in a single local file you control. Validated import, adversarial rows skipped, idempotent via client_id, v3 migrations.</p>
+      <a class="feat-link" href="#log">Manage data →</a>
+    </article>
+  </div>
+</section>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="card streak">
+      <div class="fire">🔥</div>
+      <div style="flex:1">
+        <div style="font-weight:900; font-size:18px"><span id="streakVal">0</span> day streak</div>
+        <div class="muted" style="font-size:12px">Train today to keep the fire alive</div>
+        <div class="muted" style="font-size:12px; margin-top:4px">📅 <b id="weekStreakVal" style="color:var(--text)">0</b> week streak • <span id="freezeVal">🛡️ freeze ready</span></div>
+      </div>
+      <div style="text-align:right"><div style="font-weight:900" id="xpVal">0 XP</div><div class="muted" style="font-size:12px" id="rankVal">Initiate</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Training rhythm — 13 weeks</h3>
+      <div class="heatmap" id="heatmap" role="img" aria-label="Training rhythm 13 weeks"></div>
+      <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:11px" class="muted"><span>Less</span><span>More →</span></div>
+      <div style="margin-top:10px" class="kpi">
+        <div><div class="muted" style="font-size:11px">WEEKLY VOLUME</div><strong id="volVal">0 kg</strong></div>
+        <div><div class="muted" style="font-size:11px">PRs</div><strong id="prVal">0</strong></div>
+      </div>
+    </div>
+
+    <div class="coach" id="coachCard">
+      <h4>Next-tier coach</h4>
+      <p id="coachText">Log a workout to get your first prescription.</p>
+      <button class="btn" style="margin-top:10px; background:white; color:#111; position:relative" onclick="document.querySelector('[data-view=log]').click()">Train weakest stat →</button>
+    </div>
+
+    <div class="card" id="turfCard">
+      <h3>Home turf 👑</h3>
+      <div id="turfBody" class="muted" style="font-size:12px">Log lifts and tick “trained here” on spots to crown your turf.</div>
+    </div>
+
+    <div class="card">
+      <h3>Today checklist</h3>
+      <label style="display:flex; gap:10px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:14px; background:var(--bg2)"><input type="checkbox" id="chkLift"> <span>Lift — bench / squat / deadlift</span></label>
+      <label style="display:flex; gap:10px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:14px; background:var(--bg2); margin-top:8px"><input type="checkbox" id="chkRun"> <span>Run — 20+ min</span></label>
+      <label style="display:flex; gap:10px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:14px; background:var(--bg2); margin-top:8px"><input type="checkbox" id="chkBody"> <span>Mobility + measures</span></label>
+    </div>
+
+    <div class="card">
+      <h3>Badges • <span id="badgeCount">0/16</span></h3>
+      <div class="badge-grid" id="badgeGrid"></div>
+    </div>
+
+    <div class="card" id="testCard" style="display:none">
+      <h3>Self-tests</h3>
+      <div id="testOut" style="display:flex; flex-direction:column; gap:6px"></div>
+    </div>
+  </aside>
+
+  <main>
+    <section id="view-dashboard" class="view active">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+        <h2 style="margin:0; letter-spacing:-.8px">Dashboard HUD</h2>
+        <div class="tabs">
+          <button class="tab active" data-range="30">30d</button>
+          <button class="tab" data-range="7">7d</button>
+          <button class="tab" data-range="90">90d</button>
+        </div>
+      </div>
+      <div class="stat-grid" id="statGrid"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px">
+        <div class="card" style="min-height:260px">
+          <h3>Volume series — 8 weeks</h3>
+          <canvas id="volumeChart" height="160" aria-label="Volume chart"></canvas>
+        </div>
+        <div class="card" style="min-height:260px">
+          <h3>Recent logs — edit / delete</h3>
+          <div id="recentLogs" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow:auto"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>Monthly challenges 🏆 <span class="muted" id="chalMonth"></span></h3>
+        <div id="chalWrap" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px"></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px">
+        <div class="card">
+          <h3>Weekly goals — 3 sessions + volume</h3>
+          <div id="goalWrap" style="display:flex; flex-direction:column; gap:10px"></div>
+        </div>
+        <div class="card">
+          <h3>Share HUD</h3>
+          <p class="muted" style="font-size:12px; margin:0 0 10px">One-click PNG of your 6-stat character sheet (client-rendered, no upload).</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <button class="btn btn-accent" id="sharePngBtn">Download HUD PNG</button>
+            <button class="btn" style="background:var(--bg2); border:1px solid var(--line)" id="copyStatsBtn">Copy stats text</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-analytics" class="view">
+      <h2 style="letter-spacing:-.8px">Analytics</h2>
+      <div class="kpi" style="margin-bottom:12px">
+        <div><div class="muted" style="font-size:11px">AVG STR SCORE</div><strong id="kpiStr">—</strong></div>
+        <div><div class="muted" style="font-size:11px">VO₂max</div><strong id="kpiVo2">—</strong></div>
+        <div><div class="muted" style="font-size:11px">BODY FAT</div><strong id="kpiBf">—</strong></div>
+        <div><div class="muted" style="font-size:11px">TOTAL LOGS</div><strong id="kpiLogs">0</strong></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px">
+        <div class="card"><h3>Strength score — 30d</h3><canvas id="chartStr" height="160"></canvas></div>
+        <div class="card"><h3>VO₂max — 30d</h3><canvas id="chartCardio" height="160"></canvas></div>
+        <div class="card"><h3>Body fat % — 30d</h3><canvas id="chartBf" height="160"></canvas></div>
+        <div class="card"><h3>Bodyweight kg — 30d</h3><canvas id="chartBw" height="160"></canvas></div>
+        <div class="card"><h3>Stat radar</h3><div style="display:grid; place-items:center"><canvas id="radar2" width="220" height="220"></canvas></div></div>
+        <div class="card"><h3>PR timeline</h3><div id="prTimeline" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow:auto"></div></div>
+      </div>
+    </section>
+
+    <section id="view-spots" class="view">
+      <h2 style="letter-spacing:-.8px">Outdoor spots near you</h2>
+      <p class="muted" style="margin:0 0 12px; max-width:70ch">Parks, tracks, pitches, pools and outdoor gyms within 3 km — powered by OpenStreetMap + Overpass (no key, no tracking). Best for END runs, AGI sprints and VIT steps.</p>
+      <div class="card" style="margin-bottom:14px">
+        <div class="log-grid">
+          <div class="field"><label>Activity</label><select id="spotFilter"><option value="all">All — run + sprint + train</option><option value="run">Run (parks, tracks)</option><option value="sprint">Sprint (tracks, pitches)</option><option value="train">Train (outdoor gym, pools)</option></select></div>
+          <div class="field"><label>Radius</label><select id="spotRadius"><option value="1500">1.5 km</option><option value="3000" selected>3 km</option><option value="5000">5 km</option></select></div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-accent" id="findSpotsBtn">Find spots near me</button>
+          <span class="muted" id="spotsOut" style="align-self:center; font-weight:700"></span>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>Route planner — circular runs, no key</h3>
+        <div class="log-grid">
+          <div class="field"><label>Distance</label><select id="routeDist"><option value="3">3 km easy</option><option value="5" selected>5 km standard</option><option value="10">10 km long</option></select></div>
+          <div class="field"><label>&nbsp;</label><button class="btn btn-accent" id="genRouteBtn">Generate circular route</button></div>
+        </div>
+        <div class="muted" id="routeOut" style="margin-top:8px; font-weight:700; font-size:12px"></div>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-dark" id="gpxBtn" disabled style="opacity:.5">Download GPX</button>
+          <button class="btn" id="logRouteBtn" disabled style="opacity:.5; background:var(--bg2); border:1px solid var(--line)">Log this run →</button>
+        </div>
+      </div>
+      <div class="spots-grid">
+        <div class="card"><h3>Map — OSM tiles + route</h3><div id="spotsMap" style="height:380px; border-radius:16px; overflow:hidden; border:1px solid var(--line)" role="img" aria-label="Outdoor spots map"></div><div class="muted" style="font-size:11px; margin-top:6px">© OpenStreetMap contributors • Overpass API • OSRM routing</div></div>
+        <div class="card"><h3>Best spots <span id="spotsCount" class="muted"></span></h3><div id="spotsList" style="display:flex; flex-direction:column; gap:8px; max-height:380px; overflow:auto"></div></div>
+      </div>
+    </section>
+
+    <section id="view-plan" class="view">
+      <h2 style="letter-spacing:-.8px">Weekly plan</h2>
+      <div class="card" style="margin-bottom:14px">
+        <div class="log-grid">
+          <div class="field"><label>Goal</label><select id="planGoal"><option value="foundation">Build foundation</option><option value="volume">Increase volume</option><option value="peak">Peak performance</option></select></div>
+          <div class="field"><label>Diet</label><select id="planVeg"><option value="nonveg">Non-veg</option><option value="veg">Vegetarian</option><option value="eggetarian">Eggetarian</option><option value="pescatarian">Pescatarian</option></select></div>
+          <div class="field"><label>Allergy / exclude</label><select id="planAllergy"><option value="none">None</option><option value="peanut">Peanut / nuts</option><option value="dairy">Dairy</option><option value="gluten">Gluten</option></select></div>
+          <div class="field"><label>Weight (kg)</label><input id="planWeight" type="number" value="78"/></div>
+          <div class="field"><label>Height (cm)</label><input id="planHeight" type="number" value="178"/></div>
+          <div class="field"><label>Age</label><input id="planAge" type="number" value="24"/></div>
+          <div class="field"><label>Activity</label><select id="planActivity"><option value="1.2">Sedentary ×1.2</option><option value="1.375">Light ×1.375</option><option value="1.55" selected>Moderate ×1.55</option><option value="1.725">Active ×1.725</option></select></div>
+          <div class="field" style="grid-column:1 / -1"><label>Free-text rules (e.g. “fast on Monday”, “non-veg only on Saturday”)</label><textarea id="planRules" rows="2" placeholder="e.g. fast on Monday, non-veg only on Saturday"></textarea></div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-accent" id="genPlanBtn">Generate timetable</button>
+          <span class="muted" id="kcalOut" style="align-self:center; font-weight:700"></span>
+        </div>
+      </div>
+      <div class="timetable" id="timetable"></div>
+      <div class="card" style="margin-top:14px">
+        <h3>Day-by-day food chart + macros</h3>
+        <table class="table" id="foodTable">
+          <thead><tr><th>Day</th><th>Focus</th><th>Meals (allergy-aware)</th><th>kcal</th><th>P / C / F</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="view-log" class="view">
+      <h2 style="letter-spacing:-.8px">Log</h2>
+      <div class="tabs" style="margin-bottom:10px">
+        <button class="tab active" data-log="strength">Strength</button>
+        <button class="tab" data-log="cardio">Cardio</button>
+        <button class="tab" data-log="body">Body</button>
+        <button class="tab" data-log="test">Performance test</button>
+      </div>
+
+      <div class="card" data-panel="strength">
+        <div class="log-grid">
+          <div class="field"><label>Lift</label><select id="sLift"><option>Bench Press</option><option>Squat</option><option>Deadlift</option><option>Overhead Press</option><option>Row</option></select></div>
+          <div class="field"><label>Weight (kg)</label><input id="sWeight" type="number" value="80"/></div>
+          <div class="field"><label>Reps</label><input id="sReps" type="number" value="5"/></div>
+          <div class="field"><label>RPE (6-10)</label><input id="sRpe" type="number" value="8" min="6" max="10"/></div>
+          <div class="field"><label>Date</label><input id="sDate" type="date"/></div>
+          <div class="field"><label>&nbsp;</label><button class="btn btn-dark" id="addStrength">Add strength log</button></div>
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:8px">Epley 1RM = weight × (1 + reps/30) → BW ratio → STR/POW. Validated 20–500 kg, RPE 6–10, rate-limited 8/min.</div>
+      </div>
+
+      <div class="card" data-panel="cardio" style="display:none">
+        <div class="log-grid">
+          <div class="field"><label>Distance (km)</label><input id="cDist" type="number" step="0.1" value="2.4"/></div>
+          <div class="field"><label>Duration (min)</label><input id="cDur" type="number" value="12"/></div>
+          <div class="field"><label>Date</label><input id="cDate" type="date"/></div>
+          <div class="field"><label>Weather check</label><button class="btn btn-accent" id="weatherBtn">Check weather & recommend</button></div>
+        </div>
+        <div id="weatherOut" class="muted" style="margin-top:8px; font-weight:700"></div>
+        <button class="btn btn-dark" id="addCardio" style="margin-top:10px">Add cardio log → VO₂max</button>
+        <div class="muted" style="font-size:12px; margin-top:6px">Cooper: VO₂max = (distance_m − 504.9)/44.73 · validated, offline-queued.</div>
+      </div>
+
+      <div class="card" data-panel="body" style="display:none">
+        <div class="log-grid">
+          <div class="field"><label>Neck (cm)</label><input id="bNeck" type="number" value="39"/></div>
+          <div class="field"><label>Waist (cm)</label><input id="bWaist" type="number" value="84"/></div>
+          <div class="field"><label>Hip (cm) — women only</label><input id="bHip" type="number" value="0"/></div>
+          <div class="field"><label>Height (cm)</label><input id="bHeight" type="number" value="178"/></div>
+          <div class="field"><label>Weight (kg)</label><input id="bWeight" type="number" value="78"/></div>
+          <div class="field"><label>Sex</label><select id="bSex"><option value="m">Male</option><option value="f">Female</option></select></div>
+          <div class="field"><label>Date</label><input id="bDate" type="date"/></div>
+          <div class="field"><label>&nbsp;</label><button class="btn btn-dark" id="addBody">Add body log → BF% + VIT</button></div>
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:6px">US Navy: waist > neck required. VIT inverted correctly — lower BF = higher score.</div>
+      </div>
+
+      <div class="card" data-panel="test" style="display:none">
+        <div class="log-grid">
+          <div class="field"><label>Test type</label><select id="tType"><option>Vertical jump (cm)</option><option>Shuttle 4×10 (s)</option><option>Sit-and-reach (cm)</option></select></div>
+          <div class="field"><label>Value</label><input id="tVal" type="number" value="52"/></div>
+          <div class="field"><label>Date</label><input id="tDate" type="date"/></div>
+          <div class="field"><label>&nbsp;</label><button class="btn btn-dark" id="addTest">Add test log</button></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">
+          <h3 style="margin:0">Data ownership — My Logs</h3>
+          <span class="muted" style="font-size:12px">Edit / delete any entry • client_id idempotent • 8/min limit</span>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+          <button class="btn btn-accent" id="jsonExport">Export JSON</button>
+          <button class="btn btn-dark" id="csvExport">Export CSV</button>
+          <label class="btn" style="background:var(--bg2); border:1px solid var(--line); cursor:pointer">Import JSON <input id="importFile" type="file" accept="application/json" hidden></label>
+          <button class="btn" style="background:var(--bg2); border:1px solid var(--line)" id="seedBtn">Seed demo data</button>
+          <button class="btn" style="background:var(--bg2); border:1px solid var(--line)" id="runTests">Run self-tests</button>
+          <button class="btn" style="background:#ff2a3a; color:white" id="wipeBtn">Wipe</button>
+        </div>
+        <div class="muted" id="importOut" style="margin-top:8px; font-size:12px"></div>
+        <div style="overflow:auto; margin-top:10px">
+          <table class="table" id="logTable"><thead><tr><th>Type</th><th>Detail</th><th>Date</th><th>XP / actions</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer style="max-width:1280px; margin:0 auto; padding:18px 20px; border-top:1px solid var(--line); display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap" class="muted">
+  <span>© 2026 IRONBOUND v3.0 — static, offline, no tracking • Real physiology, zero server.</span>
+  <span><a href="?test=1" style="color:var(--accent2); font-weight:800">Self-tests</a> • PWA • CSP hardened</span>
+</footer>
+
+<button class="fab" id="fab" aria-label="Quick log" aria-expanded="false" aria-controls="fabMenu">+</button>
+<nav class="fab-menu" id="fabMenu" aria-label="Quick log">
+  <a class="fab-item" href="#log" onclick="document.querySelector('[data-view=log]').click(); document.querySelector('[data-log=strength]').click(); return true">🏋️ Strength</a>
+  <a class="fab-item" href="#log" onclick="document.querySelector('[data-view=log]').click(); document.querySelector('[data-log=cardio]').click(); return true">🏃 Run</a>
+  <a class="fab-item" href="#log" onclick="document.querySelector('[data-view=log]').click(); document.querySelector('[data-log=body]').click(); return true">📏 Body</a>
+  <a class="fab-item" href="#log" onclick="document.querySelector('[data-view=log]').click(); document.querySelector('[data-log=test]').click(); return true">🔥 Field tests</a>
+</nav>
+<div class="queue-pill" id="queueBadge">Online • synced</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="level-banner" id="levelBanner" role="status">✦ Level up! <span id="levelBannerText"></span></div>
+
+<div class="onboarding" id="onboarding" style="display:none" role="dialog" aria-modal="true" aria-label="Onboarding">
+  <div class="onb-card">
+    <h2 style="margin:0 0 6px; letter-spacing:-.8px">Welcome to IRONBOUND</h2>
+    <p class="muted" style="margin:0 0 14px">We’ll calibrate your six stats. You can change these anytime in Log.</p>
+    <div class="onb-grid">
+      <div class="field"><label>Bodyweight (kg)</label><input id="obW" type="number" value="78"/></div>
+      <div class="field"><label>Height (cm)</label><input id="obH" type="number" value="178"/></div>
+      <div class="field"><label>Sex</label><select id="obSex"><option value="m">Male</option><option value="f">Female</option></select></div>
+      <div class="field"><label>Goal</label><select id="obGoal"><option value="foundation">Foundation</option><option value="volume">Volume</option><option value="peak">Peak</option></select></div>
+    </div>
+    <button class="btn btn-accent" id="obStart" style="width:100%; margin-top:14px">Enter the gym →</button>
+    <div class="muted" style="font-size:11px; margin-top:8px; text-align:center">All data stays on this device. Export anytime.</div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

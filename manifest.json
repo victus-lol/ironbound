@@ -1,0 +1,10 @@
+{
+  "name": "IRONBOUND — RPG Fitness",
+  "short_name": "IRONBOUND",
+  "description": "Turn gym data into RPG stats. Physiologically grounded, ranked, prescribed.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#020617",
+  "icons": []
+}
