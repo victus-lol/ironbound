@@ -5,3 +5,7 @@ __pycache__/
 .venv/
 venv/
 .env
+# local test run logs and scratch probes - real suite lives in tests/
+test_output*.txt
+test_summary.txt
+test_route.py
