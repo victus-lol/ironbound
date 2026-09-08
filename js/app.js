@@ -1159,6 +1159,65 @@ function runSelfTests(){
 if(new URLSearchParams(location.search).get('test')==='1') setTimeout(runSelfTests,500);
 document.getElementById('runTests')?.addEventListener('click', runSelfTests);
 
+/* ---------- Landing story mechanics (scroll pill, ticker, expanders) ---------- */
+(function(){
+  // stat ticker content (duplicated for a seamless loop)
+  const tick=document.getElementById('tickerTrack');
+  if(tick){
+    const seq=['STR <b>Strength</b>','END <b>Endurance</b>','AGI <b>Agility</b>','VIT <b>Vitality</b>','POW <b>Power</b>','FLX <b>Flexibility</b>'];
+    const half=seq.map(s=>`<span>${s}</span>`).join('<span aria-hidden="true">•</span>');
+    tick.innerHTML=half+'<span aria-hidden="true">•</span>'+half+'<span aria-hidden="true">•</span>';
+  }
+  // expandable feature cards (event delegation, a11y state)
+  document.querySelector('.feature-grid')?.addEventListener('click',e=>{
+    const btn=e.target.closest('.feat-more'); if(!btn) return;
+    const card=btn.closest('.feat'); if(!card) return;
+    const open=card.classList.toggle('open');
+    btn.setAttribute('aria-expanded', String(open));
+    btn.textContent=open?'Show less −':'See examples +';
+  });
+  // plan shortcut inside week section
+  document.querySelector('[data-goto-plan]')?.addEventListener('click',e=>{
+    e.preventDefault();
+    document.querySelector('[data-view=plan]')?.click();
+  });
+  // scroll progress + sticky CTA (rAF-throttled, passive)
+  const bar=document.getElementById('scrollProgBar'), cta=document.getElementById('stickyCta');
+  const hero=document.getElementById('top');
+  let queued=false;
+  function onScroll(){
+    if(queued) return; queued=true;
+    requestAnimationFrame(()=>{
+      queued=false;
+      const max=document.documentElement.scrollHeight - innerHeight;
+      if(bar) bar.style.width=(max>0? (scrollY/max*100):0)+'%';
+      const pastHero=hero? scrollY > hero.offsetTop + hero.offsetHeight - 120 : scrollY>600;
+      const appOpen=document.getElementById('view-log')?.classList.contains('active');
+      cta?.classList.toggle('show', pastHero && !appOpen);
+    });
+  }
+  addEventListener('scroll', onScroll, {passive:true}); onScroll();
+  cta?.addEventListener('click',()=>{
+    document.getElementById('app')?.scrollIntoView({behavior:'smooth'});
+    document.querySelector('[data-view=log]')?.click();
+  });
+  // section counter pill (IntersectionObserver, no scroll math)
+  const secs=[...document.querySelectorAll('[data-section]')];
+  const num=document.getElementById('pillNum'), label=document.getElementById('pillLabel'), total=document.getElementById('pillTotal');
+  if(total) total.textContent=String(secs.length).padStart(2,'0');
+  if(secs.length && num && label && 'IntersectionObserver' in window){
+    const io=new IntersectionObserver(entries=>{
+      entries.forEach(en=>{
+        if(!en.isIntersecting) return;
+        const i=secs.indexOf(en.target);
+        num.textContent=String(i+1).padStart(2,'0');
+        label.textContent=en.target.getAttribute('data-section')||'';
+      });
+    }, {rootMargin:'-45% 0px -45% 0px'});
+    secs.forEach(s=> io.observe(s));
+  }
+})();
+
 /* ---------- Init ---------- */
 renderHUD(); genPlan(); hydrateFromIdb();
 window.addEventListener('resize', ()=>{ renderHUD(); volumeChart(); });

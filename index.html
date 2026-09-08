@@ -37,7 +37,11 @@
   </div>
 </header>
 
-<section class="hero" id="top">
+<div class="scroll-progress" aria-hidden="true"><i id="scrollProgBar"></i></div>
+<div class="section-pill" id="sectionPill" aria-hidden="true"><span class="pill-dot"></span><span id="pillNum">01</span><span class="pill-sep">/</span><span id="pillTotal">06</span><span class="pill-label" id="pillLabel">Start</span></div>
+<button class="sticky-cta" id="stickyCta" aria-label="Log a workout">+ Log a workout</button>
+
+<section class="hero" id="top" data-section="Start">
   <div class="hero-grid">
     <div>
       <span class="eyebrow">● PHYSIOLOGICALLY GROUNDED • NO FAKE POINTS</span>
@@ -47,6 +51,13 @@
         <button class="btn-primary" onclick="document.querySelector('[data-view=log]').click()">+ Log workout</button>
         <button class="btn-ghost" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">See how it ranks you →</button>
       </div>
+      <div class="hero-stats" aria-label="IRONBOUND at a glance">
+        <div><b>6</b><span>RPG stats</span></div>
+        <div><b>16</b><span>badges</span></div>
+        <div><b>3</b><span>real formulas</span></div>
+        <div><b>100%</b><span>offline</span></div>
+      </div>
+      <div class="scroll-cue" aria-hidden="true"><span>Scroll to explore</span><i>↓</i></div>
       <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap" class="muted">
         <span style="display:flex; gap:8px; align-items:center"><span style="width:10px;height:10px;border-radius:50%;background:var(--green)"></span> Offline-first • IndexedDB + localStorage</span>
         <span>•</span><span>Epley 1RM • Cooper VO₂max • US-Navy BF% • v3 migrations</span>
@@ -64,52 +75,167 @@
   </div>
 </section>
 
-<section class="section" id="features" aria-labelledby="features-heading">
+<div class="ticker" aria-hidden="true"><div class="ticker-track" id="tickerTrack"></div></div>
+
+<section class="section" id="features" data-section="Inside" aria-labelledby="features-heading">
   <div class="section-head">
+    <p class="sec-num">01</p>
     <h2 id="features-heading">Not a point tracker. A character sheet.</h2>
-    <p>Every number is mapped to a tier and a gap bar. No vanity metrics — just physiology and standards.</p>
+    <p>Every number is mapped to a tier and a gap bar. No vanity metrics — just physiology and standards. Click any card to explore.</p>
   </div>
   <div class="feature-grid">
     <article class="feat">
       <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/><path d="M2 20h20"/></svg></div>
       <h3>Live stat cards</h3>
       <p>Six RPG stats with scores, tiers, trends, and exactly how many points you need for the next rank. Updates on every log.</p>
-      <a class="feat-link" href="#dashboard">Open HUD →</a>
+      <div class="feat-detail">
+        <span>Bench 80×5 → STR 61 · Pro</span>
+        <span>2.4 km in 12 min → END 58</span>
+        <span>BF 16% → VIT 72 · Pro</span>
+      </div>
+      <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#dashboard">Open HUD →</a></div>
     </article>
     <article class="feat">
       <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 12l2 2 4-5"/><circle cx="12" cy="12" r="9"/></svg></div>
       <h3>Streaks & badges</h3>
-      <p>Fire streak, weekly volume, PR auto-detection and 15 earnable badges. XP tied to tier progression — with GitHub-style rhythm.</p>
-      <a class="feat-link" href="#dashboard">View streak →</a>
+      <p>Fire streak, weekly volume, PR auto-detection and 16 earnable badges. XP tied to tier progression — with GitHub-style rhythm.</p>
+      <div class="feat-detail">
+        <span>🔥 3-day fire → Week warrior</span>
+        <span>New PR 🎉 toast on every best</span>
+        <span>👑 Home turf for your best lift</span>
+      </div>
+      <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#dashboard">View streak →</a></div>
     </article>
     <article class="feat">
       <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>
       <h3>Next-tier coach</h3>
       <p>Algorithm finds your weakest stat — the fastest path to overall rank increase — and tells you exactly what to train. One-click Log it.</p>
-      <a class="feat-link" href="#dashboard">Get coached →</a>
+      <div class="feat-detail">
+        <span>FLX 34/100 · Healthy — limiter</span>
+        <span>Prescription: 12-min mobility daily</span>
+        <span>Fastest overall rank increase</span>
+      </div>
+      <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#dashboard">Get coached →</a></div>
     </article>
     <article class="feat">
       <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18M8 12h8M8 16h8"/></svg></div>
       <h3>Weekly plan</h3>
       <p>Goal + veg + allergy + free-text rules (“fast on Monday”) → Mon–Sun timetable + 4-meal allergy-aware food chart, kcal/macros scaled to BW. Every session has Log it.</p>
-      <a class="feat-link" href="#plan">Build plan →</a>
+      <div class="feat-detail">
+        <span>Foundation / Volume / Peak tracks</span>
+        <span>Mifflin-St Jeor × activity macros</span>
+        <span>“Non-veg only on Saturday” rules</span>
+      </div>
+      <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#plan">Build plan →</a></div>
     </article>
     <article class="feat">
       <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/><circle cx="12" cy="12" r="5"/></svg></div>
       <h3>Weather-smart runs</h3>
       <p>Log-a-run checks live weather (GPS → IP fallback, Open-Meteo, no key) and recommends “hit the gym” or “go for a run”.</p>
-      <a class="feat-link" href="#log">Try log-a-run →</a>
+      <div class="feat-detail">
+        <span>Rain / heat → hit the gym</span>
+        <span>Clear 12–26°C → go for a run</span>
+        <span>AQI + UV verdict included</span>
+      </div>
+      <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#log">Try log-a-run →</a></div>
     </article>
     <article class="feat">
       <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
       <h3>Backup & import</h3>
       <p>One-click JSON/CSV export. Your data lives in a single local file you control. Validated import, adversarial rows skipped, idempotent via client_id, v3 migrations.</p>
-      <a class="feat-link" href="#log">Manage data →</a>
+      <div class="feat-detail">
+        <span>Export JSON + CSV in one click</span>
+        <span>Bad rows skipped, never crashes</span>
+        <span>Offline queue syncs on reconnect</span>
+      </div>
+      <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#log">Manage data →</a></div>
     </article>
   </div>
 </section>
 
-<div class="app">
+<section class="section" id="journey" data-section="Journey" aria-labelledby="journey-heading">
+  <div class="section-head">
+    <p class="sec-num">02</p>
+    <h2 id="journey-heading">From first log to level-up in five steps.</h2>
+    <p>No onboarding maze. Log once and the whole machine starts moving.</p>
+  </div>
+  <ol class="journey">
+    <li><b>01 · Log</b><span>One set, run or measurement. Takes 20 seconds.</span></li>
+    <li><b>02 · Score</b><span>Epley, Cooper and Navy turn it into six stats.</span></li>
+    <li><b>03 · Rank</b><span>Benchmarked Average → Elite, with the gap shown.</span></li>
+    <li><b>04 · Coach</b><span>Your weakest stat prescribes the next session.</span></li>
+    <li><b>05 · Level</b><span>XP, streaks and badges pull you back tomorrow.</span></li>
+  </ol>
+</section>
+
+<section class="section" id="week" data-section="Week" aria-labelledby="week-heading">
+  <div class="section-head">
+    <p class="sec-num">03</p>
+    <h2 id="week-heading">What could your week look like?</h2>
+    <p>A sample foundation week. Yours regenerates from your goal, diet and rules.</p>
+  </div>
+  <div class="week-grid" aria-label="Sample training week">
+    <div class="day"><b>Mon</b><span>Push · bench + OHP</span></div>
+    <div class="day"><b>Tue</b><span>Pull · row + pull-up</span></div>
+    <div class="day"><b>Wed</b><span>Legs · squat</span></div>
+    <div class="day"><b>Thu</b><span>Mobility + core</span></div>
+    <div class="day"><b>Fri</b><span>Run · 20 min easy</span></div>
+    <div class="day"><b>Sat</b><span>Full body</span></div>
+    <div class="day rest"><b>Sun</b><span>Rest · walk 6k steps</span></div>
+  </div>
+  <p class="week-note">No two weeks need to look the same. That's the point. <a href="#plan" data-goto-plan>Generate yours →</a></p>
+</section>
+
+<section class="section" id="faq" data-section="FAQ" aria-labelledby="faq-heading">
+  <div class="section-head">
+    <p class="sec-num">04</p>
+    <h2 id="faq-heading">Before you ask.</h2>
+  </div>
+  <div class="need-grid">
+    <div class="need-card">
+      <h3>You don't need</h3>
+      <ul>
+        <li><span aria-hidden="true">✕</span> A gym membership</li>
+        <li><span aria-hidden="true">✕</span> A coach or a plan from day one</li>
+        <li><span aria-hidden="true">✕</span> An account of any kind</li>
+        <li><span aria-hidden="true">✕</span> To know everything already</li>
+      </ul>
+    </div>
+    <div class="need-card need-yes">
+      <h3>You do need</h3>
+      <ul>
+        <li><span aria-hidden="true">✓</span> Curiosity about your own numbers</li>
+        <li><span aria-hidden="true">✓</span> One logged workout to start</li>
+        <li><span aria-hidden="true">✓</span> Ten minutes, three times a week</li>
+        <li><span aria-hidden="true">✓</span> Willingness to chase the next tier</li>
+      </ul>
+    </div>
+  </div>
+  <div class="faq" aria-label="Frequently asked questions">
+    <details>
+      <summary>How are my stats actually computed?</summary>
+      <p>Strength uses the Epley 1RM formula mapped to bodyweight ratio, endurance uses the Cooper 12-minute VO₂max estimate, and vitality uses the US Navy circumference body-fat method. Each result is interpolated across published athletic benchmarks — no invented points.</p>
+    </details>
+    <details>
+      <summary>Is my data private? Where does it live?</summary>
+      <p>Entirely on your device — localStorage with an IndexedDB mirror. One-click JSON/CSV export, validated import, offline queue. There is no server to leak from.</p>
+    </details>
+    <details>
+      <summary>Do I need an account?</summary>
+      <p>No. There are no accounts, no tracking, no paywall. Open the page and log your first set.</p>
+    </details>
+    <details>
+      <summary>What if I miss a week?</summary>
+      <p>Your daily fire may die, but your weekly streak survives one blank week per month via the freeze token — rest and travel are part of training, not failure.</p>
+    </details>
+    <details>
+      <summary>Does it work offline or in a basement gym?</summary>
+      <p>Yes. It's an installable PWA: log offline, everything syncs into place when you're back. No signal required under the barbell.</p>
+    </details>
+  </div>
+</section>
+
+<div class="app" id="app" data-section="App">
   <aside class="sidebar">
     <div class="card streak">
       <div class="fire">🔥</div>
