@@ -299,7 +299,7 @@
       <div class="stat-grid" id="statGrid"></div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px">
         <div class="card" style="min-height:260px">
-          <h3>Volume series — 8 weeks</h3>
+          <h3 id="volTitle">Volume series — 30 days</h3>
           <canvas id="volumeChart" height="160" aria-label="Volume chart"></canvas>
         </div>
         <div class="card" style="min-height:260px">
@@ -381,7 +381,7 @@
       <div class="card" style="margin-bottom:14px">
         <div class="log-grid">
           <div class="field"><label>Goal</label><select id="planGoal"><option value="foundation">Build foundation</option><option value="volume">Increase volume</option><option value="peak">Peak performance</option></select></div>
-          <div class="field"><label>Diet</label><select id="planVeg"><option value="nonveg">Non-veg</option><option value="veg">Vegetarian</option><option value="eggetarian">Eggetarian</option><option value="pescatarian">Pescatarian</option></select></div>
+          <div class="field"><label>Diet</label><select id="planVeg"><option value="nonveg">Non-veg</option><option value="veg">Vegetarian</option><option value="vegan">Vegan</option><option value="eggetarian">Eggetarian</option><option value="pescatarian">Pescatarian</option></select></div>
           <div class="field"><label>Allergy / exclude</label><select id="planAllergy"><option value="none">None</option><option value="peanut">Peanut / nuts</option><option value="dairy">Dairy</option><option value="gluten">Gluten</option></select></div>
           <div class="field"><label>Weight (kg)</label><input id="planWeight" type="number" value="78"/></div>
           <div class="field"><label>Height (cm)</label><input id="planHeight" type="number" value="178"/></div>

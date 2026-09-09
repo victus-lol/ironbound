@@ -415,7 +415,7 @@ function renderSide(){
 
 function renderRecent(){
   const el=document.getElementById('recentLogs');
-  const recent=[...state.logs].sort((a,b)=> new Date(b.date)-new Date(a.date)).slice(0,6);
+  const recent=[...state.logs].sort((a,b)=> new Date(b.date)-new Date(a.date)).slice(0, rangeDays<=7?6: rangeDays<=30?10:20);
   if(!recent.length){ el.innerHTML='<div class="muted" style="padding:10px; border:1px dashed var(--line); border-radius:14px">No logs yet. Add a strength set to see XP and tier movement.</div>'; return; }
   el.innerHTML= recent.map(l=>{
     let detail='';
@@ -476,23 +476,28 @@ function renderKPIs(){
   document.getElementById('kpiBf').textContent= bLogs.length? fmt([...bLogs].sort((a,b)=> new Date(b.date)-new Date(a.date))[0].bf,1)+'%' : '—';
   document.getElementById('kpiLogs').textContent=state.logs.length;
 }
+let rangeDays=30; // dashboard window, driven by the 7/30/90d tabs
 function volumeChart(){
   const c=document.getElementById('volumeChart'); if(!c) return;
   const ctx=c.getContext('2d'); const W=c.width=c.offsetWidth*2, H=c.height=160*2; ctx.clearRect(0,0,W,H);
-  const weeks=8; const vols=[];
+  const vols=[];
   const today=new Date(); today.setHours(0,0,0,0);
-  for(let w=weeks-1; w>=0; w--){
-    const weekStart=new Date(today - w*7*86400000);
-    // aggregate Sun-Sat? use rolling 7
-    const s=new Date(weekStart - 6*86400000), e=weekStart;
-    const v=state.logs.filter(l=> l.type==='strength' && new Date(l.date)>=s && new Date(l.date)<=e).reduce((a,l)=>a+l.weight*l.reps,0);
-    vols.push(v);
+  const dayVol=iso=>{
+    return state.logs.filter(l=> l.type==='strength' && l.date.slice(0,10)===iso).reduce((a,l)=>a+l.weight*l.reps,0);
+  };
+  if(rangeDays<=30){
+    // daily buckets for 7d / 30d windows
+    for(let i=rangeDays-1;i>=0;i--) vols.push(dayVol(isoLocal(new Date(today - i*86400000))));
+  } else {
+    // weekly buckets for the 90d window (13 rolling weeks)
+    for(let w=12; w>=0; w--){
+      const weekStart=new Date(today - w*7*86400000);
+      const s=new Date(weekStart - 6*86400000), e=weekStart;
+      vols.push(state.logs.filter(l=> l.type==='strength' && new Date(l.date)>=s && new Date(l.date)<=e).reduce((a,l)=>a+l.weight*l.reps,0));
+    }
   }
-  // fallback to 14-day daily if no weekly data yet: keep compatibility
-  if(vols.every(v=>v===0) && state.logs.length){
-    const days=14; vols.length=0;
-    for(let i=days-1;i>=0;i--){ const iso=isoLocal(new Date(today - i*86400000)); const v=state.logs.filter(l=> l.type==='strength' && l.date.slice(0,10)===iso).reduce((a,l)=>a+l.weight*l.reps,0); vols.push(v); }
-  }
+  const vt=document.getElementById('volTitle');
+  if(vt) vt.textContent=`Volume series — last ${rangeDays<=30? rangeDays+' days':'13 weeks'}`;
   const max=Math.max(1,...vols,800); const pad=30*2;
   ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--line');
   ctx.beginPath(); ctx.moveTo(pad,H-pad); ctx.lineTo(W-pad,H-pad); ctx.stroke();
@@ -666,6 +671,7 @@ function genPlan(){
   const lib={
     nonveg:['Oats + whey + banana','Chicken rice + veg','Salmon + quinoa','Greek yogurt + berries'],
     veg:['Oats + soy milk + banana','Paneer + rice + veg','Lentils + quinoa','Fruit + nuts'],
+    vegan:['Oats + soy milk + peanut butter + banana','Tofu + rice + veg','Lentils + quinoa + tahini','Chickpea chaat + fruit'],
     eggetarian:['Oats + whey + banana','Egg bhurji + rice + veg','Salmon/egg + quinoa','Greek yogurt + berries'],
     pescatarian:['Oats + whey + banana','Fish + rice + veg','Salmon + quinoa','Greek yogurt + berries']
   };
@@ -678,7 +684,7 @@ function genPlan(){
     const isFast=fastingDays.includes(d.toLowerCase());
     const kcal=isFast? Math.round(tdee*0.65) : plan[i]==='Rest'? Math.round(tdee*0.92) : plan[i].includes('Run')||plan[i].includes('Intervals')? Math.round(tdee*1.06) : tdee;
     const p=Math.round(w*(isFast?1.2: plan[i]==='Rest'?1.6:1.9)), c=Math.round(kcal*(isFast?0.45:0.52)/4), f=Math.round(kcal*(isFast?0.22:0.26)/9);
-    const m=isFast? 'Fasting-friendly: fruit + nuts • light soup • yogurt' : meals.join(' • ');
+    const m=isFast? (isVeg==='vegan'? 'Fasting-friendly: fruit + seeds • light veg soup • coconut yogurt' : 'Fasting-friendly: fruit + nuts • light soup • yogurt') : meals.join(' • ');
     return `<tr><td><b>${d}</b></td><td>${esc(plan[i])}</td><td style="max-width:360px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${esc(m)}</td><td>${kcal}</td><td>${p}/${c}/${f}</td></tr>`;
   }).join('');
   localStorage.setItem('gymrat_plan', JSON.stringify({goal, allergy, w,h,age,act, tdee, plan, isVeg, freeText}));
@@ -768,7 +774,12 @@ document.getElementById('wipeBtn').onclick=()=>{
   el.addEventListener('change',()=> localStorage.setItem(id, el.checked?'1':'0'));
 });
 document.querySelectorAll('[data-range]').forEach(b=>{
-  b.addEventListener('click',()=>{ document.querySelectorAll('[data-range]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); toast(b.textContent+' view'); });
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('[data-range]').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    rangeDays=Number(b.dataset.range)||30;
+    volumeChart(); renderRecent();
+  });
 });
 
 /* ---------- FAB ---------- */
