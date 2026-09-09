@@ -3,13 +3,16 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<meta name="theme-color" content="#020617"/>
+<meta name="theme-color" content="#0c0d0f"/>
 <title>IRONBOUND — Turn gym data into RPG stats</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://api.open-meteo.com https://air-quality-api.open-meteo.com https://router.project-osrm.org https://ipwho.is https://overpass-api.de https://overpass.kumi.systems https://nominatim.openstreetmap.org">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://api.open-meteo.com https://air-quality-api.open-meteo.com https://router.project-osrm.org https://ipwho.is https://overpass-api.de https://overpass.kumi.systems https://nominatim.openstreetmap.org">
 <meta name="description" content="IRONBOUND turns real gym data into RPG stats, ranks you vs athletic standards and tells you what to train next."/>
 <link rel="manifest" href="manifest.json"/>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff2a3a'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-weight='900' font-size='14' fill='white'%3EIB%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23e89150'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='monospace' font-weight='900' font-size='14' fill='%2314100b'%3EIB%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 </head>
@@ -19,9 +22,10 @@
     <a class="brand" href="#top">
       <div class="brand-mark">IB</div>
       <div>
-        <div class="brand-title">IRON<span>BOUND</span></div>
+        <div class="brand-title">IRONBOUND</div>
         <div class="brand-sub">RPG FITNESS • LEVEL UP IRL</div>
       </div>
+      <span class="brand-ver">v3.0</span>
     </a>
     <nav class="nav" id="nav" aria-label="Primary">
       <a href="#dashboard" data-view="dashboard" class="active">Dashboard</a>
@@ -85,7 +89,7 @@
   </div>
   <div class="feature-grid">
     <article class="feat">
-      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/><path d="M2 20h20"/></svg></div>
+      <div class="feat-icon" aria-hidden="true">01</div>
       <h3>Live stat cards</h3>
       <p>Six RPG stats with scores, tiers, trends, and exactly how many points you need for the next rank. Updates on every log.</p>
       <div class="feat-detail">
@@ -96,7 +100,7 @@
       <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#dashboard">Open HUD →</a></div>
     </article>
     <article class="feat">
-      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 12l2 2 4-5"/><circle cx="12" cy="12" r="9"/></svg></div>
+      <div class="feat-icon" aria-hidden="true">02</div>
       <h3>Streaks & badges</h3>
       <p>Fire streak, weekly volume, PR auto-detection and 16 earnable badges. XP tied to tier progression — with GitHub-style rhythm.</p>
       <div class="feat-detail">
@@ -107,7 +111,7 @@
       <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#dashboard">View streak →</a></div>
     </article>
     <article class="feat">
-      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>
+      <div class="feat-icon" aria-hidden="true">03</div>
       <h3>Next-tier coach</h3>
       <p>Algorithm finds your weakest stat — the fastest path to overall rank increase — and tells you exactly what to train. One-click Log it.</p>
       <div class="feat-detail">
@@ -118,7 +122,7 @@
       <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#dashboard">Get coached →</a></div>
     </article>
     <article class="feat">
-      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18M8 12h8M8 16h8"/></svg></div>
+      <div class="feat-icon" aria-hidden="true">04</div>
       <h3>Weekly plan</h3>
       <p>Goal + veg + allergy + free-text rules (“fast on Monday”) → Mon–Sun timetable + 4-meal allergy-aware food chart, kcal/macros scaled to BW. Every session has Log it.</p>
       <div class="feat-detail">
@@ -129,7 +133,7 @@
       <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#plan">Build plan →</a></div>
     </article>
     <article class="feat">
-      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/><circle cx="12" cy="12" r="5"/></svg></div>
+      <div class="feat-icon" aria-hidden="true">05</div>
       <h3>Weather-smart runs</h3>
       <p>Log-a-run checks live weather (GPS → IP fallback, Open-Meteo, no key) and recommends “hit the gym” or “go for a run”.</p>
       <div class="feat-detail">
@@ -140,7 +144,7 @@
       <div class="feat-foot"><button class="feat-more" aria-expanded="false">See examples +</button><a class="feat-link" href="#log">Try log-a-run →</a></div>
     </article>
     <article class="feat">
-      <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+      <div class="feat-icon" aria-hidden="true">06</div>
       <h3>Backup & import</h3>
       <p>One-click JSON/CSV export. Your data lives in a single local file you control. Validated import, adversarial rows skipped, idempotent via client_id, v3 migrations.</p>
       <div class="feat-detail">
@@ -260,7 +264,7 @@
     <div class="coach" id="coachCard">
       <h4>Next-tier coach</h4>
       <p id="coachText">Log a workout to get your first prescription.</p>
-      <button class="btn" style="margin-top:10px; background:white; color:#111; position:relative" onclick="document.querySelector('[data-view=log]').click()">Train weakest stat →</button>
+      <button class="btn" style="margin-top:10px; position:relative" onclick="document.querySelector('[data-view=log]').click()">Train weakest stat →</button>
     </div>
 
     <div class="card" id="turfCard">
