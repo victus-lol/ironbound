@@ -165,7 +165,7 @@ const STATS_CFG={
   STR:{name:'STR',full:'Strength',color:'#ff2a3a',glow:'rgba(255,42,58,.22)',thresholds:[0.6,0.8,1.0,1.3,1.6],unit:'×BW',desc:'Epley 1RM / BW'},
   END:{name:'END',full:'Endurance',color:'#00b7ff',glow:'rgba(0,183,255,.22)',thresholds:[32,38,44,50,56],unit:'VO₂',desc:'Cooper VO₂max'},
   VIT:{name:'VIT',full:'Vitality',color:'#00d68f',glow:'rgba(0,214,143,.22)',thresholds:[25,20,16,12,8],unit:'BF%',desc:'US Navy BF%',invert:true},
-  AGI:{name:'AGI',full:'Agility',color:'#ffb800',glow:'rgba(255,184,0,.22)',thresholds:[8,10,12,14,16],unit:'km/h',desc:'Avg pace'},
+  AGI:{name:'AGI',full:'Agility',color:'#a3c52c',glow:'rgba(163,197,44,.22)',thresholds:[8,10,12,14,16],unit:'km/h',desc:'Avg pace'},
   POW:{name:'POW',full:'Power',color:'#7c4dff',glow:'rgba(124,77,255,.22)',thresholds:[0.7,0.9,1.1,1.4,1.7],unit:'×BW',desc:'Explosive 1RM'},
   FLX:{name:'FLX',full:'Flexibility',color:'#ff6a8a',glow:'rgba(255,106,138,.22)',thresholds:[28,36,44,52,60],unit:'score',desc:'Tests & consistency'},
 };
@@ -258,9 +258,18 @@ function weakestStat(stats){ let min=Infinity,key=null; Object.entries(stats).fo
 /* ---------- Render ---------- */
 function renderHUD(){
   const stats=computeStats(); const xp=computeXP(); const lv=levelFromXP(xp); const rank=rankFromLevel(lv);
+  const avg=Math.round(Object.values(stats).reduce((a,b)=>a+b.score,0)/6);
+  const w0=weakestStat(stats);
+  const TIER_ORDER=['Average','Healthy','Enthusiast','Pro','Elite'];
+  const gapTxt= stats[w0].pts===0? `${w0} • MAXED` : `${w0} • +${stats[w0].pts} to ${TIER_ORDER[stats[w0].tier.idx+1]}`;
   document.getElementById('heroLevel').textContent=`Lv ${lv} • ${rank}`;
-  document.getElementById('heroPath').textContent=`${Math.round(Object.values(stats).reduce((a,b)=>a+b.score,0)/6)}% avg • Weakest: ${weakestStat(stats)}`;
-  document.getElementById('heroPathBar').style.width = Math.round(Object.values(stats).reduce((a,b)=>a+b.score,0)/6)+'%';
+  document.getElementById('heroScore').textContent=avg;
+  document.getElementById('heroEntries').textContent=`${state.logs.length} logged ${state.logs.length===1?'entry':'entries'}`;
+  document.getElementById('heroLvl').textContent=lv;
+  document.getElementById('heroXp').textContent=`${xp%220} / 220 XP`;
+  document.getElementById('heroXpBar').style.width=(xp%220/220*100)+'%';
+  document.getElementById('heroPath').textContent=`${avg}% avg • Weakest: ${gapTxt}`;
+  document.getElementById('heroPathBar').style.width=avg+'%';
   document.getElementById('heroMini').innerHTML= Object.entries(stats).map(([k,v])=> `<div class="mini-stat"><span>${k}</span><strong style="color:${STATS_CFG[k].color}">${v.score}</strong></div>`).join('');
   const grid=document.getElementById('statGrid');
   grid.innerHTML= Object.entries(stats).map(([k,v])=>{
@@ -306,7 +315,7 @@ function drawRadar(canvas, stats){
   keys.forEach((k,i)=>{ const ang=-Math.PI/2 + i*2*Math.PI/keys.length; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(ang)*R, cy+Math.sin(ang)*R); ctx.stroke(); });
   ctx.beginPath();
   keys.forEach((k,i)=>{ const ang=-Math.PI/2 + i*2*Math.PI/keys.length; const r=R*(stats[k].score/100); const x=cx+Math.cos(ang)*r, y=cy+Math.sin(ang)*r; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
-  ctx.closePath(); ctx.fillStyle='rgba(124,77,255,.22)'; ctx.fill(); ctx.strokeStyle='#7c4dff'; ctx.lineWidth=2; ctx.stroke();
+  ctx.closePath(); ctx.fillStyle='rgba(232,145,80,.20)'; ctx.fill(); ctx.strokeStyle='#e89150'; ctx.lineWidth=2; ctx.stroke();
   ctx.font='700 11px Inter, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
   keys.forEach((k,i)=>{
     const ang=-Math.PI/2 + i*2*Math.PI/keys.length;
@@ -424,7 +433,7 @@ function renderRecent(){
     if(l.type==='body') detail=`BF ${fmt(l.bf,1)}% • ${l.weight}kg`;
     if(l.type==='test') detail=`${esc(l.testType)}: ${l.value}`;
     const isPR = l.type==='strength' && (()=>{ const orm=l.weight*(1+l.reps/30); const best=Math.max(...state.logs.filter(x=>x.type==='strength'&&x.lift===l.lift).map(x=>x.weight*(1+x.reps/30))); return Math.abs(orm-best)<0.01; })();
-    return `<div style="display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:14px; background:var(--bg2)"><span><b style="text-transform:capitalize">${esc(l.type)}</b> • ${detail} ${isPR?' <span style=\"color:var(--gold); font-weight:900\">• PR 🎉</span>':''}</span><span class="muted" style="font-size:12px">${esc(l.date.slice(0,10))}</span></div>`;
+    return `<div style="display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:14px; background:var(--bg2)"><span><b style="text-transform:capitalize">${esc(l.type)}</b> • ${detail} ${isPR?' <span style=\"color:var(--accent); font-weight:900\">• PR 🎉</span>':''}</span><span class="muted" style="font-size:12px">${esc(l.date.slice(0,10))}</span></div>`;
   }).join('');
 }
 function renderLogTable(){
@@ -501,10 +510,10 @@ function volumeChart(){
   const max=Math.max(1,...vols,800); const pad=30*2;
   ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--line');
   ctx.beginPath(); ctx.moveTo(pad,H-pad); ctx.lineTo(W-pad,H-pad); ctx.stroke();
-  ctx.beginPath(); ctx.lineWidth=3*2; ctx.strokeStyle='#ff2a3a';
+  ctx.beginPath(); ctx.lineWidth=3*2; ctx.strokeStyle='#e89150';
   vols.forEach((v,i)=>{ const x=pad + i*(W-2*pad)/Math.max(1,vols.length-1); const y=H-pad - (v/max)*(H-2*pad); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
-  ctx.stroke(); ctx.lineTo(W-pad,H-pad); ctx.lineTo(pad,H-pad); ctx.closePath(); ctx.fillStyle='rgba(255,42,58,.12)'; ctx.fill();
-  vols.forEach((v,i)=>{ const x=pad + i*(W-2*pad)/Math.max(1,vols.length-1); const y=H-pad - (v/max)*(H-2*pad); ctx.beginPath(); ctx.arc(x,y,4*2,0,Math.PI*2); ctx.fillStyle='#7c4dff'; ctx.fill(); });
+  ctx.stroke(); ctx.lineTo(W-pad,H-pad); ctx.lineTo(pad,H-pad); ctx.closePath(); ctx.fillStyle='rgba(232,145,80,.12)'; ctx.fill();
+  vols.forEach((v,i)=>{ const x=pad + i*(W-2*pad)/Math.max(1,vols.length-1); const y=H-pad - (v/max)*(H-2*pad); ctx.beginPath(); ctx.arc(x,y,4*2,0,Math.PI*2); ctx.fillStyle='#c9722e'; ctx.fill(); });
 }
 function lineChart(canvasId, values){
   const c=document.getElementById(canvasId); if(!c) return;
@@ -512,7 +521,7 @@ function lineChart(canvasId, values){
   if(!values.length){ ctx.fillStyle='#9aa0c3'; ctx.font='12px sans-serif'; ctx.fillText('No data yet — log to see trends', 20, H/2); return; }
   const max=Math.max(...values), min=Math.min(...values); const range=Math.max(1, max-min); const pad=28*2;
   ctx.strokeStyle='#1f2647'; ctx.beginPath(); ctx.moveTo(pad,H-pad); ctx.lineTo(W-pad,H-pad); ctx.stroke();
-  ctx.beginPath(); ctx.strokeStyle= canvasId==='chartBf'? '#00d68f' : canvasId==='chartCardio'? '#00b7ff' : canvasId==='chartBw'? '#ffb800' : '#ff2a3a'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.strokeStyle= canvasId==='chartBf'? '#00d68f' : canvasId==='chartCardio'? '#00b7ff' : canvasId==='chartBw'? '#e89150' : '#ff2a3a'; ctx.lineWidth=3;
   values.forEach((v,i)=>{ const x=pad + i*(W-2*pad)/Math.max(1,values.length-1); const y=H-pad - ((v-min)/range)*(H-2*pad); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
   ctx.stroke();
 }
@@ -666,7 +675,7 @@ function genPlan(){
   const tpl={ foundation:['Push (bench+ OHP)','Pull (row+ pull-up)','Legs (squat)','Mobility + core','Run 20 min','Full body','Rest'], volume:['Chest+Tris','Back+Bis','Legs heavy','Shoulders','Run + core','Full body volume','Rest'], peak:['Strength AM / Run PM','Plyo + sprint','Heavy legs','Power + mobility','Intervals 6×400','Test day','Rest'] };
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const plan=tpl[goal];
-  const tt=document.getElementById('timetable'); tt.innerHTML= days.map((d,i)=> `<div class="day ${plan[i]==='Rest'?'rest':''}"><div style="display:flex; justify-content:space-between; align-items:center"><b>${d}</b> ${fastingDays.includes(d.toLowerCase())?'<span style="font-size:11px; background:var(--gold); color:#111; padding:2px 6px; border-radius:999px; font-weight:800">fast</span>':''}</div><div style="margin-top:6px; font-weight:800; font-size:13px">${esc(plan[i])}</div><div class="muted" style="font-size:12px; margin-top:4px">${plan[i]==='Rest'?'Recover • walk 6k steps':'Sets 4-5 • RPE 7-8'} ${i<plan.length && plan[i]!=='Rest'? `<a href="#" onclick="document.querySelector('[data-view=log]').click(); return false" style="color:var(--accent2); font-weight:800">Log it →</a>`:''}</div></div>`).join('');
+  const tt=document.getElementById('timetable'); tt.innerHTML= days.map((d,i)=> `<div class="day ${plan[i]==='Rest'?'rest':''}"><div style="display:flex; justify-content:space-between; align-items:center"><b>${d}</b> ${fastingDays.includes(d.toLowerCase())?'<span style="font-size:11px; background:var(--accent); color:var(--accent-ink); padding:2px 6px; border-radius:999px; font-weight:800">fast</span>':''}</div><div style="margin-top:6px; font-weight:800; font-size:13px">${esc(plan[i])}</div><div class="muted" style="font-size:12px; margin-top:4px">${plan[i]==='Rest'?'Recover • walk 6k steps':'Sets 4-5 • RPE 7-8'} ${i<plan.length && plan[i]!=='Rest'? `<a href="#" onclick="document.querySelector('[data-view=log]').click(); return false" style="color:var(--accent2); font-weight:800">Log it →</a>`:''}</div></div>`).join('');
   // meals library
   const lib={
     nonveg:['Oats + whey + banana','Chicken rice + veg','Salmon + quinoa','Greek yogurt + berries'],
@@ -815,7 +824,7 @@ function getLocation(){
 }
 function spotCategory(tags){
   const t=((tags.leisure||'')+' '+(tags.sport||'')+' '+(tags.natural||'')).toLowerCase();
-  if(t.includes('track')||t.includes('pitch')||t.includes('stadium')) return {kind:'sprint', label:'Sprint • AGI/POW', color:'#ffb800'};
+  if(t.includes('track')||t.includes('pitch')||t.includes('stadium')) return {kind:'sprint', label:'Sprint • AGI/POW', color:'#a3c52c'};
   if(t.includes('fitness')||t.includes('pool')||t.includes('gym')) return {kind:'train', label:'Train • STR/POW', color:'#7c4dff'};
   return {kind:'run', label:'Run • END/VIT', color:'#00d68f'};
 }
@@ -905,7 +914,7 @@ document.getElementById('sharePngBtn')?.addEventListener('click', ()=>{
   const c=document.createElement('canvas'); c.width=900; c.height=520; const x=c.getContext('2d');
   const dark=document.documentElement.getAttribute('data-theme')!=='light';
   x.fillStyle=dark?'#0a0a0f':'#ffffff'; x.fillRect(0,0,900,520);
-  const g=x.createLinearGradient(0,0,900,0); g.addColorStop(0,'#ff2a3a'); g.addColorStop(1,'#7c4dff'); x.fillStyle=g; x.fillRect(0,0,900,10);
+  const g=x.createLinearGradient(0,0,900,0); g.addColorStop(0,'#f2a863'); g.addColorStop(1,'#c9722e'); x.fillStyle=g; x.fillRect(0,0,900,10);
   x.fillStyle=dark?'#f5f6ff':'#0e1230'; x.font='900 44px Inter, sans-serif'; x.fillText(`IRONBOUND — Lv ${lv} • ${rank}`, 36, 70);
   x.font='700 20px Inter, sans-serif'; x.fillStyle=dark?'#9aa0c3':'#5a6188'; x.fillText(`${xp} XP • ${state.logs.length} logs • Weakest: ${weakestStat(stats)}`, 36, 102);
   let px=36, py=140;

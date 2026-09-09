@@ -3,12 +3,12 @@
   --font-display:'Space Grotesk',ui-sans-system,-apple-system,'Segoe UI',Roboto,sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   --bg:#0c0d0f; --bg2:#131417; --card:#16181b; --card2:#1b1e22; --line:#26282d;
-  --text:#ece9e2; --muted:#a6a29b; --dim:#6f6c66;
+  --text:#ece9e2; --muted:#a6a29b; --dim:#86827a;
   --accent:#e89150; --accent2:#c9722e; --accent-ink:#14100b;
-  --gold:#e8b34b; --green:#3ecf8e; --blue:#3e9bf0;
+  --green:#3ecf8e; --blue:#3e9bf0;
   --radius:12px; --radius2:16px; --shadow:0 1px 0 rgba(0,0,0,.4),0 16px 40px rgba(0,0,0,.35);
 }
-[data-theme="light"]{ --bg:#f3f0e9; --bg2:#ffffff; --card:#ffffff; --card2:#faf8f3; --line:#e0dccd; --text:#17181a; --muted:#5f5c56; --dim:#8a867d; --accent:#b45f1d; --accent2:#8a4a15; --accent-ink:#ffffff; --shadow:0 1px 0 rgba(0,0,0,.05),0 16px 40px rgba(23,24,26,.08); }
+[data-theme="light"]{ --bg:#f3f0e9; --bg2:#ffffff; --card:#ffffff; --card2:#faf8f3; --line:#e0dccd; --text:#17181a; --muted:#5f5c56; --dim:#6e6a62; --accent:#8f4f0e; --accent2:#8a4a15; --accent-ink:#ffffff; --shadow:0 1px 0 rgba(0,0,0,.05),0 16px 40px rgba(23,24,26,.08); }
 *{box-sizing:border-box} html{scroll-behavior:smooth; scrollbar-width:thin}
 body{margin:0; font-family:var(--font-display); background:var(--bg); color:var(--text); overflow-x:hidden; -webkit-font-smoothing:antialiased}
 .mono, .eyebrow, .nav a, .brand-sub, .brand-ver, .hud-head b, .level-pill, .mini-stat span, .mini-stat strong, .s-tier, .stat-card strong, .hero-stats b, .hero-stats span, .kpi strong, .ticker-track, .sec-num, .section-pill, .sticky-cta, .queue-pill, .feat-more, .feat-detail span, .journey b, .table th, .field label, .tab, .btn, .cta, .icon-btn, .day b, .spot-tag, .today-kicker, .hm-legend{font-family:var(--font-mono)}
@@ -22,14 +22,14 @@ img{max-width:100%; display:block; height:auto} a{color:inherit} button{font:inh
 .site-header{position:fixed; top:0; left:0; right:0; z-index:40; backdrop-filter:blur(16px) saturate(1.2); background:color-mix(in srgb, var(--bg) 80%, transparent); border-bottom:1px solid var(--line)}
 .header-inner{max-width:1280px; margin:0 auto; padding:0 20px; height:64px; display:flex; align-items:center; justify-content:space-between; gap:16px}
 .brand{display:flex; align-items:center; gap:12px; text-decoration:none}
-.brand-mark{width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:grid; place-items:center; font-weight:900; color:white; box-shadow:0 8px 20px rgba(255,42,58,.35)}
+.brand-mark{width:38px; height:38px; border-radius:12px; display:grid; place-items:center; font-weight:900}
 .brand-title{font-weight:900; font-size:18px; letter-spacing:-.8px} .brand-title span{color:var(--accent)} .brand-sub{font-size:11px; color:var(--muted); margin-top:-2px; letter-spacing:.4px}
 .nav{display:flex; gap:6px; align-items:center}
 .nav a{padding:9px 14px; border-radius:999px; font-size:13px; font-weight:700; color:var(--muted); text-decoration:none; transition:.2s; border:1px solid transparent}
 .nav a.active,.nav a:hover{background:var(--card); color:var(--text); border-color:var(--line)}
 .header-actions{display:flex; align-items:center; gap:10px}
 .icon-btn{width:40px; height:40px; border-radius:999px; border:1px solid var(--line); background:var(--card); display:grid; place-items:center; cursor:pointer; transition:.2s}
-.icon-btn:hover{transform:translateY(-1px)} .cta{padding:10px 18px; border-radius:999px; background:linear-gradient(135deg,var(--accent),#ff6a00); color:white; border:0; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 10px 24px rgba(255,42,58,.35)}
+.icon-btn:hover{transform:translateY(-1px)}
 
 /* hero — padding accounts for fixed header */
 .hero{max-width:1280px; margin:0 auto; padding:96px 20px 0}
@@ -98,7 +98,7 @@ img{max-width:100%; display:block; height:auto} a{color:inherit} button{font:inh
 .field input,.field select,.field textarea{padding:12px 14px; border-radius:14px; border:1px solid var(--line); background:var(--bg2); color:var(--text); outline:none}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent2); box-shadow:0 0 0 4px rgba(124,77,255,.12)}
 .btn{padding:12px 16px; border-radius:14px; border:0; font-weight:900; cursor:pointer} .btn-dark{background:var(--text); color:var(--bg)} .btn-accent{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:white}
-.muted{color:var(--muted)} .badge-grid{display:flex; flex-wrap:wrap; gap:8px} .badge{padding:8px 10px; border-radius:999px; border:1px solid var(--line); background:var(--bg2); font-size:12px; font-weight:800; display:flex; gap:6px; align-items:center} .badge.on{background:linear-gradient(135deg, rgba(255,184,0,.18), rgba(255,42,58,.12)); border-color:color-mix(in srgb,var(--gold) 30%, var(--line));}
+.muted{color:var(--muted)} .badge-grid{display:flex; flex-wrap:wrap; gap:8px} .badge{padding:8px 10px; border-radius:999px; border:1px solid var(--line); background:var(--bg2); font-size:12px; font-weight:800; display:flex; gap:6px; align-items:center} .badge.on{background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent); border-color:color-mix(in srgb,var(--accent) 35%, var(--line));}
 .table{width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border:1px solid var(--line); border-radius:16px} .table th,.table td{padding:10px 12px; text-align:left; font-size:13px; border-bottom:1px solid var(--line)} .table th{background:var(--bg2); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .kpi{display:flex; gap:14px; flex-wrap:wrap} .kpi div{background:var(--bg2); border:1px solid var(--line); padding:12px 14px; border-radius:16px; min-width:120px} .kpi strong{font-size:20px}
 .timetable{display:grid; grid-template-columns:repeat(7,1fr); gap:8px} @media(max-width:800px){ .timetable{grid-template-columns:repeat(2,1fr)} }
@@ -107,7 +107,7 @@ img{max-width:100%; display:block; height:auto} a{color:inherit} button{font:inh
 .view{display:none} .view.active{display:block} canvas{max-width:100%}
 .onboarding{position:fixed; inset:0; z-index:70; background:rgba(4,6,16,.72); backdrop-filter:blur(10px); display:grid; place-items:center; padding:18px}
 .onb-card{max-width:560px; width:100%; background:var(--card); border:1px solid var(--line); border-radius:26px; padding:20px; box-shadow:var(--shadow)} .onb-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px} @media(max-width:600px){ .onb-grid{grid-template-columns:1fr} }
-.level-banner{position:fixed; top:78px; left:50%; transform:translateX(-50%) translateY(-20px); background:linear-gradient(135deg,var(--gold),#ff6a00); color:#111; padding:10px 16px; border-radius:999px; font-weight:900; box-shadow:0 16px 32px rgba(0,0,0,.3); opacity:0; pointer-events:none; transition:.4s; z-index:55; display:flex; gap:8px; align-items:center} .level-banner.show{opacity:1; transform:translateX(-50%) translateY(0)}
+.level-banner{position:fixed; top:78px; left:50%; transform:translateX(-50%) translateY(-20px); background:linear-gradient(135deg,var(--accent),var(--accent2)); color:var(--accent-ink); padding:10px 16px; border-radius:999px; font-weight:900; box-shadow:0 16px 32px rgba(0,0,0,.3); opacity:0; pointer-events:none; transition:.4s; z-index:55; display:flex; gap:8px; align-items:center; font-family:var(--font-mono); font-size:12px} .level-banner.show{opacity:1; transform:translateX(-50%) translateY(0)}
 /* FAB */
 .fab{position:fixed; right:18px; bottom:18px; width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:white; border:0; display:grid; place-items:center; box-shadow:0 12px 32px rgba(0,0,0,.35); cursor:pointer; z-index:45; font-size:28px; font-weight:900}
 .fab-menu{position:fixed; right:18px; bottom:82px; display:none; flex-direction:column; gap:8px; z-index:45}
@@ -123,6 +123,14 @@ img{max-width:100%; display:block; height:auto} a{color:inherit} button{font:inh
 .spots-grid{ display:grid; grid-template-columns:1.2fr .8fr; gap:14px }
 @media(max-width:900px){ .spots-grid{ grid-template-columns:1fr } }
 /* ---- Forge skin: machined panels, hairlines, single oxide accent ---- */
+.skip-link{position:fixed; top:-48px; left:12px; z-index:80; padding:10px 16px; border-radius:10px; background:var(--text); color:var(--bg); font-family:var(--font-mono); font-size:12px; font-weight:800; text-decoration:none; transition:top .2s}
+.skip-link:focus{top:12px}
+.hero-composite{display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:2px}
+.hero-composite strong{display:block; font-size:40px; letter-spacing:-1px; line-height:1.05}
+.hc-label{display:block; font-size:10px; color:var(--dim)}
+.hc-sub{display:block; font-size:11px; color:var(--muted); margin-top:2px}
+.hc-right{text-align:right}
+.hc-bar{margin-top:10px}
 .hero h1{font-weight:600}
 .brand-mark{background:color-mix(in srgb, var(--accent) 15%, transparent); border:1px solid color-mix(in srgb, var(--accent) 40%, transparent); box-shadow:none; color:var(--accent); border-radius:8px; font-family:var(--font-mono); font-size:13px}
 .brand-title{font-family:var(--font-mono); font-size:13px; font-weight:600; letter-spacing:.28em}
@@ -131,7 +139,7 @@ img{max-width:100%; display:block; height:auto} a{color:inherit} button{font:inh
 @media(min-width:640px){ .brand-ver{display:inline } }
 .nav a{border:0; border-radius:8px; color:var(--dim)}
 .nav a.active, .nav a:hover{background:transparent; color:var(--text); border:0}
-.cta, .btn-primary{background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white), var(--accent)); color:var(--accent-ink); border:1px solid color-mix(in srgb, var(--accent) 60%, transparent); box-shadow:none; border-radius:10px; font-size:12px}
+.cta, .btn-primary{padding:10px 18px; background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white), var(--accent)); color:var(--accent-ink); border:1px solid color-mix(in srgb, var(--accent) 60%, transparent); box-shadow:none; border-radius:10px; font-size:12px; font-weight:800; cursor:pointer}
 .btn-ghost{background:transparent; border:1px solid var(--line); border-radius:10px; font-size:12px}
 .btn, .tab{border-radius:10px; font-size:12px}
 .btn-accent{background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white), var(--accent)); color:var(--accent-ink); border:1px solid color-mix(in srgb, var(--accent) 60%, transparent)}

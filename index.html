@@ -17,6 +17,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 </head>
 <body>
+<a class="skip-link" href="#app">Skip to app</a>
 <header class="site-header">
   <div class="header-inner">
     <a class="brand" href="#top">
@@ -69,6 +70,11 @@
     </div>
     <div class="hero-card">
       <div class="hud-head"><b>HUD — live preview</b><span class="level-pill"><span class="dot"></span><span id="heroLevel">Lv 7 • Adept</span></span></div>
+      <div class="hero-composite">
+        <div><span class="hc-label">Composite score</span><strong id="heroScore">0</strong><span class="hc-sub" id="heroEntries">0 logged entries</span></div>
+        <div class="hc-right"><span class="hc-label">Level</span><strong id="heroLvl">1</strong><span class="hc-sub" id="heroXp">0 / 220 XP</span></div>
+      </div>
+      <div class="progress hc-bar" aria-hidden="true"><i id="heroXpBar" style="width:0%"></i></div>
       <div class="radar-wrap"><canvas id="radar" width="220" height="220" aria-label="Six stat radar"></canvas></div>
       <div class="stat-mini-grid" id="heroMini"></div>
       <div style="margin-top:12px; display:flex; gap:8px; align-items:center; color:var(--muted); font-size:12px; font-weight:700">
