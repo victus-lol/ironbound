@@ -903,7 +903,15 @@ function initSpotsMap(){
   }
   if(!spotsMap){
     spotsMap=L.map('spotsMap').setView([12.9716,77.5946], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(spotsMap);
+    const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'});
+    let tileFails=0;
+    tiles.on('tileerror', ()=>{
+      tileFails++;
+      const st=document.getElementById('tileStatus');
+      if(st && tileFails>=3) st.textContent=' • map tiles degraded — spot list still works';
+    });
+    tiles.on('tileload', ()=>{ tileFails=0; const st=document.getElementById('tileStatus'); if(st) st.textContent=''; });
+    tiles.addTo(spotsMap);
     setTimeout(()=> spotsMap.invalidateSize(), 300);
   } else setTimeout(()=> spotsMap.invalidateSize(), 200);
   return true;
