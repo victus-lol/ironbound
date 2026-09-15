@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://victus-lol.github.io/ironbound/sitemap.xml
