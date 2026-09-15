@@ -55,8 +55,8 @@ Date: 2026-09-07 • Auditor: senior full-stack • Scope: `gymrat/` static SPA 
 | Physiology correctness | 9/10 | 9/10 | Epley/Cooper/Navy verified by vitest 25/25 + self-tests. VIT invert fixed. |
 | UX / UI polish | 9/10 | 7/10 | Fixed header, equal-height cards, FAB, focus-visible, reduced-motion. No image-scale bugs (`img{max-width:100%}`). |
 | Performance | 9/10 | 8/10 | <50KB static, no CDN except Leaflet (defer). Next First Load 91.7kB. |
-| Accessibility | 8/10 | 7/10 | aria labels, toast live-region, dialog modal. Missing: skip-link, chart text alternatives. |
-| Security | 8/10 | 8/10 | CSP, esc(), validators, 8/min limit, API-key gate. Missing: server HttpOnly auth (Step 5). |
+| Accessibility | 8/10 | 7/10 | Skip link, aria labels, toast live-region, dialog modal. Missing: chart text alternatives, screen-reader pass. |
+| Security | 6/10 | 6/10 | CSP, esc(), validators, 8/min limit, API-key gate, PBKDF2 + JWT + E2E. Downgraded from 8: controls exist but have never had an adversarial review; no audit logging, no incident path. |
 | Data / Offline | 9/10 | 8/10 | v3 migrations, client_id idempotent, queue, 24h spots cache. Missing: IndexedDB >5MB. |
 | Testing | 8/10 | 9/10 | 40/40 vitest (rpg 25, db 3, sync 2, auth 4, spots 6). Missing: Playwright E2E. |
 | PWA | 8/10 | 6/10 | manifest + sw cache. Missing: icons 192/512, screenshots. |
@@ -123,6 +123,42 @@ Fixed:
 9. **Next Dashboard** — seed used UTC dates (→local), profile now read from `localStorage` instead of hardcoded 78kg, stat grid auto-fit for mobile.
 10. **Next SpotsMap** — activity filter now refilters instantly client-side + redraws markers, no refetch; grid auto-fit for mobile.
 Meaningfulness check: Spots map directly powers “weather-smart runs” + END/AGI training (explicitly requested); BW trend completes VIT tracking; weekly goals close the motivation loop; share PNG implements brief 4C. No novelty features added.
+
+## 10. Sprint 1 — trust sprint (2026-09-09)
+Shipped as separate commits, pushed one-by-one, deploys green:
+1. PWA icons (192/512 + maskable) — Chrome now offers install
+2. OG card + meta + sitemap + robots — shares render, search sees the page
+3. On-device diagnostics — error hook + ring buffer + beacon + viewer (observability 2→5)
+4. Tile-failure status — static + Next, degraded notice instead of gray box
+5. CHANGELOG.md + this section
+Triage notes on review feedback: "one PR" rejected in favor of the standing
+separate-commits rule (independently verifiable/revertible); icons+OG kept as two
+adjacent commits for the same reason; Lighthouse gate specified below but deferred —
+floors can't be set honestly without a real-browser measurement, and an unvalidated
+gate risks a red main.
+
+## 11. Static → Next migration path (design note, cheap now / expensive later)
+Mechanism already exists, now stated explicitly: every log carries a `client_id`;
+`ironbound-next/lib/sync.ts` pushes local logs (`INSERT OR IGNORE`) then pulls
+server truth and merges by id (server wins). Migration = run Sync once from the
+Dashboard button; no export/import round-trip, no duplicates, offline queue drains
+first. Open items before promoting it: per-user scoping (else two users share one
+log table), conflict rule if the same `client_id` is edited on both sides
+(current: server wins silently — needs a timestamp check), and a first-sync backup
+prompt ("export JSON before first sync").
+
+## 12. Device-pass scenarios (write first, then poke)
+1. Airplane-mode set: log a strength set with phone offline → background 2 min → reopen → queue badge drains on reconnect
+2. Basement gym: load page with no signal after prior visit (SW shell?) → log → verify no blank screen
+3. Install flow: Android Chrome + iOS Safari → Add to Home Screen → icon correct, standalone, theme color
+4. Map stress: Spots → deny location → IP fallback → Find → toggle airplane mid-search → expect legible errors, button restored
+5. Small phone (360px): dashboard cards stack, FAB doesn't cover queue pill, sticky CTA doesn't cover FAB
+
+## 13. Lighthouse gate (specified, deferred)
+Per-category floors in the Pages workflow (not one blended number — a11y and
+performance rot for different reasons): performance ≥85, accessibility ≥90,
+best-practices ≥90, SEO ≥90. Deferred until a real-browser measured run sets
+honest baselines; adding an unvalidated enforcing gate risks a red main.
 
 ## 7. Files changed this round
 - `gymrat/index.html`: CSP, Leaflet, Spots nav/view, goals/share cards, BW + PR cards
