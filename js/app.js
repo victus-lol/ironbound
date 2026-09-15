@@ -38,6 +38,28 @@ const todayISO=()=> isoLocal(new Date());
 const fmt=(n,d=0)=> Number(n).toFixed(d);
 const esc=s=> String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+/* ---------- Error hook (observability floor) ----------
+   First code to run: captures window errors + unhandled rejections into a
+   capped on-device ring buffer, best-effort beacons to /api/errors (lands
+   once served behind ironbound-next; 404-harmless on Pages). */
+const errHook={
+  buf:[],
+  install(){
+    try{ this.buf=JSON.parse(localStorage.getItem('ironbound_errors')||'[]'); if(!Array.isArray(this.buf)) this.buf=[]; }catch{ this.buf=[]; }
+    window.addEventListener('error', e=> this.capture('error', e.message, e.filename, e.lineno));
+    window.addEventListener('unhandledrejection', e=> this.capture('promise', String((e.reason&&e.reason.message)||e.reason)));
+  },
+  capture(kind,msg,file,line){
+    const entry={t:new Date().toISOString(), kind, msg:String(msg||'unknown').slice(0,300), file:String(file||'').slice(-60), line:line||0};
+    this.buf.push(entry); if(this.buf.length>20) this.buf=this.buf.slice(-20);
+    try{ localStorage.setItem('ironbound_errors', JSON.stringify(this.buf)); }catch{}
+    try{ if(typeof renderErrors==='function') renderErrors(); }catch{}
+    try{ if(navigator.onLine && navigator.sendBeacon) navigator.sendBeacon('/api/errors', JSON.stringify(entry)); }catch{}
+  },
+  clear(){ this.buf=[]; try{ localStorage.removeItem('ironbound_errors'); }catch{} }
+};
+errHook.install();
+
 /* ---------- Storage + Migrations (IndexedDB-lite via localStorage, versioned) ---------- */
 function migrate(raw){
   if(!raw) return {logs:[], visits:[], profile:{weight:78,height:178,sex:'m',goal:'foundation'}, meta:{created:Date.now(), ver:SCHEMA_VER}, queue:[]};
@@ -292,6 +314,7 @@ function renderHUD(){
   try{ if(typeof renderChallenges==='function') renderChallenges(); }catch{}
   try{ if(typeof renderWeekly==='function') renderWeekly(); }catch{}
   try{ if(typeof renderTurf==='function') renderTurf(); }catch{}
+  try{ if(typeof renderErrors==='function') renderErrors(); }catch{}
   const prevLv=Number(localStorage.getItem('gymrat_prevLv')||'1');
   if(lv>prevLv) showLevelBanner(lv, rank);
   localStorage.setItem('gymrat_prevLv', String(lv));
@@ -749,6 +772,21 @@ document.getElementById('importFile').addEventListener('change', async e=>{
   e.target.value='';
 });
 document.getElementById('exportBtn').onclick=()=> document.getElementById('jsonExport').click();
+
+/* ---------- Diagnostics viewer ---------- */
+function renderErrors(){
+  const n=document.getElementById('errCount'), list=document.getElementById('errList');
+  if(!n||!list) return;
+  n.textContent=errHook.buf.length? `• ${errHook.buf.length} logged` : '• clean';
+  list.innerHTML=errHook.buf.length? [...errHook.buf].reverse().map(e=>
+    `<div style="padding:8px 10px; border:1px solid var(--line); border-radius:12px; background:var(--bg2); font-size:11px"><b>${esc(e.kind)}</b> • ${esc(e.msg)}<div class="muted">${esc(e.t)}${e.file?' • '+esc(e.file):''}${e.line?' :'+e.line:''}</div></div>`
+  ).join('') : '<div class="muted" style="font-size:12px">No errors recorded on this device.</div>';
+}
+document.getElementById('errCopy')?.addEventListener('click', async ()=>{
+  const t=JSON.stringify({app:'ironbound-v3', errors:errHook.buf}, null, 2);
+  try{ await navigator.clipboard.writeText(t); toast('Diagnostics copied'); }catch{ toast('Copy failed — screenshot the list'); }
+});
+document.getElementById('errClear')?.addEventListener('click', ()=>{ errHook.clear(); renderErrors(); toast('Diagnostics cleared'); });
 document.getElementById('seedBtn').onclick=()=>{
   if(state.logs.length>12) return toast('Demo already seeded');
   const today=new Date(); const lifts=['Bench Press','Squat','Deadlift'];

@@ -493,6 +493,14 @@
           <button class="btn" style="background:#ff2a3a; color:white" id="wipeBtn">Wipe</button>
         </div>
         <div class="muted" id="importOut" style="margin-top:8px; font-size:12px"></div>
+        <details style="margin-top:10px">
+          <summary class="muted" style="font-size:12px; font-weight:800; cursor:pointer">Diagnostics <span id="errCount"></span></summary>
+          <div id="errList" style="display:flex; flex-direction:column; gap:6px; margin-top:8px"></div>
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button class="btn" id="errCopy" style="background:var(--bg2); border:1px solid var(--line); font-size:12px; padding:8px 12px">Copy diagnostics</button>
+            <button class="btn" id="errClear" style="background:var(--bg2); border:1px solid var(--line); font-size:12px; padding:8px 12px">Clear</button>
+          </div>
+        </details>
         <div style="overflow:auto; margin-top:10px">
           <table class="table" id="logTable"><thead><tr><th>Type</th><th>Detail</th><th>Date</th><th>XP / actions</th></tr></thead><tbody></tbody></table>
         </div>
