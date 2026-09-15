@@ -122,6 +122,15 @@ img{max-width:100%; display:block; height:auto} a{color:inherit} button{font:inh
 .goal-bar{ height:8px; background:var(--bg2); border:1px solid var(--line); border-radius:999px; overflow:hidden } .goal-bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--green),var(--blue)) }
 .spots-grid{ display:grid; grid-template-columns:1.2fr .8fr; gap:14px }
 @media(max-width:900px){ .spots-grid{ grid-template-columns:1fr } }
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px }
+@media(max-width:760px){ .grid-2{ grid-template-columns:1fr } }
+@media(max-width:720px){
+  .header-inner{flex-wrap:wrap; height:auto; padding-top:10px; padding-bottom:10px; row-gap:8px}
+  .hero{padding-top:150px}
+  .nav{order:3; width:100%; overflow-x:auto; padding-bottom:2px}
+  .nav a{white-space:nowrap}
+  .brand-sub{display:none}
+}
 /* ---- Forge skin: machined panels, hairlines, single oxide accent ---- */
 .skip-link{position:fixed; top:-48px; left:12px; z-index:80; padding:10px 16px; border-radius:10px; background:var(--text); color:var(--bg); font-family:var(--font-mono); font-size:12px; font-weight:800; text-decoration:none; transition:top .2s}
 .skip-link:focus{top:12px}

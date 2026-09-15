@@ -173,6 +173,16 @@ document.querySelectorAll('[data-view]').forEach(a=>{
     window.scrollTo({top: document.querySelector('.app').offsetTop-70, behavior:'smooth'});
   });
 });
+/* Feature-card links are plain anchors (work with no JS); upgrade them to view switches */
+document.querySelectorAll('.feat-link').forEach(a=>{
+  a.addEventListener('click',e=>{
+    const m=(a.getAttribute('href')||'').match(/^#(dashboard|analytics|plan|spots|log)$/);
+    if(!m) return; // external or unknown hash: leave alone
+    e.preventDefault();
+    const target=document.querySelector(`[data-view="${m[1]}"]`);
+    if(target) target.click();
+  });
+});
 document.querySelectorAll('[data-log]').forEach(b=>{
   b.addEventListener('click',()=>{
     document.querySelectorAll('[data-log]').forEach(x=>x.classList.remove('active'));
@@ -608,25 +618,25 @@ function addLog(entry){
 
 /* ---------- Handlers (validated + rate-limited) ---------- */
 document.getElementById('addStrength').onclick=()=>{
-  if(rateLimited()) return toast('Slow down — 8 logs/min max');
   const lift=document.getElementById('sLift').value, weight=Number(document.getElementById('sWeight').value), reps=Number(document.getElementById('sReps').value), rpe=Number(document.getElementById('sRpe').value), date=document.getElementById('sDate').value||todayISO();
   const err=validateStrength({weight,reps,rpe}); if(err) return toast(err);
+  if(rateLimited()) return toast('Slow down — 8 logs/min max');
   const xp=10+Math.round(reps*1.2)+Math.max(0,rpe-7)*3;
   addLog({client_id:uid(), type:'strength', lift, weight, reps, rpe, date, xp});
   if(navigator.onLine) toast('Strength logged +'+xp+' XP');
 };
 document.getElementById('addCardio').onclick=()=>{
-  if(rateLimited()) return toast('Slow down — 8 logs/min max');
   const distance=Number(document.getElementById('cDist').value), duration=Number(document.getElementById('cDur').value), date=document.getElementById('cDate').value||todayISO();
   const err=validateCardio({distance,duration}); if(err) return toast(err);
+  if(rateLimited()) return toast('Slow down — 8 logs/min max');
   const vo2=(distance*1000-504.9)/44.73; const xp=12+Math.round(distance*4);
   addLog({client_id:uid(), type:'cardio', distance, duration, date, xp, vo2});
   if(navigator.onLine) toast(`Run logged • VO₂ ${fmt(vo2,1)} • +${xp} XP`);
 };
 document.getElementById('addBody').onclick=()=>{
-  if(rateLimited()) return toast('Slow down — 8 logs/min max');
   const neck=Number(document.getElementById('bNeck').value), waist=Number(document.getElementById('bWaist').value), hip=Number(document.getElementById('bHip').value), height=Number(document.getElementById('bHeight').value), weight=Number(document.getElementById('bWeight').value), sex=document.getElementById('bSex').value, date=document.getElementById('bDate').value||todayISO();
   const err=validateBody({neck,waist,hip,height,weight}); if(err) return toast(err);
+  if(rateLimited()) return toast('Slow down — 8 logs/min max');
   let bf=22;
   try{ if(sex==='m') bf=86.01*Math.log10(waist-neck)-70.041*Math.log10(height)+36.76; else bf=163.205*Math.log10(waist+hip-neck)-97.684*Math.log10(height)-78.387; }catch{ bf=22; }
   if(!isFinite(bf)) bf=22; bf=Math.max(4,Math.min(45,bf));
@@ -635,9 +645,9 @@ document.getElementById('addBody').onclick=()=>{
   if(navigator.onLine) toast(`Body log • BF ${fmt(bf,1)}%`);
 };
 document.getElementById('addTest').onclick=()=>{
-  if(rateLimited()) return toast('Slow down — 8 logs/min max');
   const testType=document.getElementById('tType').value, value=Number(document.getElementById('tVal').value), date=document.getElementById('tDate').value||todayISO();
   if(!value||value<=0) return toast('Enter a valid test value');
+  if(rateLimited()) return toast('Slow down — 8 logs/min max');
   addLog({client_id:uid(), type:'test', testType, value, date, xp:7});
   if(navigator.onLine) toast('Test logged');
 };
@@ -687,6 +697,7 @@ document.getElementById('weatherBtn').onclick=async()=>{
 /* ---------- Planning (goal + schedule + allergy + free-text rules like Ironbound) ---------- */
 function genPlan(){
   const goal=document.getElementById('planGoal').value, allergy=document.getElementById('planAllergy').value, w=Number(document.getElementById('planWeight').value), h=Number(document.getElementById('planHeight').value), age=Number(document.getElementById('planAge').value), act=Number(document.getElementById('planActivity').value);
+  if(!(w>0)||!(h>0)||!(age>0)) { toast('Enter weight, height and age to build your plan'); return; }
   const sex=state.profile.sex||'m';
   const bmr=10*w + 6.25*h -5*age + (sex==='m'?5:-161);
   const tdee=Math.round(bmr*act);
@@ -694,11 +705,14 @@ function genPlan(){
   const freeText=(document.getElementById('planRules')?.value||'').toLowerCase();
   // detect fasting days
   const fastingDays = freeText.includes('fast') ? (freeText.match(/monday|tuesday|wednesday|thursday|friday|saturday|sunday/g)||[]) : [];
+  // timetable uses 3-letter day labels, so compare on abbreviations
+  const fastShort = fastingDays.map(f=> f.slice(0,3));
+  const isFastDay = d => fastShort.includes(d.toLowerCase());
   document.getElementById('kcalOut').textContent=`≈ ${tdee.toLocaleString()} kcal/day • P ${Math.round(w*1.8)}g • C ${Math.round(tdee*0.5/4)}g • F ${Math.round(tdee*0.28/9)}g`;
   const tpl={ foundation:['Push (bench+ OHP)','Pull (row+ pull-up)','Legs (squat)','Mobility + core','Run 20 min','Full body','Rest'], volume:['Chest+Tris','Back+Bis','Legs heavy','Shoulders','Run + core','Full body volume','Rest'], peak:['Strength AM / Run PM','Plyo + sprint','Heavy legs','Power + mobility','Intervals 6×400','Test day','Rest'] };
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const plan=tpl[goal];
-  const tt=document.getElementById('timetable'); tt.innerHTML= days.map((d,i)=> `<div class="day ${plan[i]==='Rest'?'rest':''}"><div style="display:flex; justify-content:space-between; align-items:center"><b>${d}</b> ${fastingDays.includes(d.toLowerCase())?'<span style="font-size:11px; background:var(--accent); color:var(--accent-ink); padding:2px 6px; border-radius:999px; font-weight:800">fast</span>':''}</div><div style="margin-top:6px; font-weight:800; font-size:13px">${esc(plan[i])}</div><div class="muted" style="font-size:12px; margin-top:4px">${plan[i]==='Rest'?'Recover • walk 6k steps':'Sets 4-5 • RPE 7-8'} ${i<plan.length && plan[i]!=='Rest'? `<a href="#" onclick="document.querySelector('[data-view=log]').click(); return false" style="color:var(--accent2); font-weight:800">Log it →</a>`:''}</div></div>`).join('');
+  const tt=document.getElementById('timetable'); tt.innerHTML= days.map((d,i)=> `<div class="day ${plan[i]==='Rest'?'rest':''}"><div style="display:flex; justify-content:space-between; align-items:center"><b>${d}</b> ${isFastDay(d)?'<span style="font-size:11px; background:var(--accent); color:var(--accent-ink); padding:2px 6px; border-radius:999px; font-weight:800">fast</span>':''}</div><div style="margin-top:6px; font-weight:800; font-size:13px">${esc(plan[i])}</div><div class="muted" style="font-size:12px; margin-top:4px">${plan[i]==='Rest'?'Recover • walk 6k steps':'Sets 4-5 • RPE 7-8'} ${i<plan.length && plan[i]!=='Rest'? `<a href="#" onclick="document.querySelector('[data-view=log]').click(); return false" style="color:var(--accent2); font-weight:800">Log it →</a>`:''}</div></div>`).join('');
   // meals library
   const lib={
     nonveg:['Oats + whey + banana','Chicken rice + veg','Salmon + quinoa','Greek yogurt + berries'],
@@ -713,7 +727,7 @@ function genPlan(){
   if(allergy!=='none' && allergens[allergy]) meals=meals.map(m=>{ let out=m; allergens[allergy].forEach(a=>{ out=out.replace(new RegExp(a,'gi'),'—'); }); return out; });
   const tbody=document.querySelector('#foodTable tbody');
   tbody.innerHTML= days.map((d,i)=>{
-    const isFast=fastingDays.includes(d.toLowerCase());
+    const isFast=isFastDay(d);
     const kcal=isFast? Math.round(tdee*0.65) : plan[i]==='Rest'? Math.round(tdee*0.92) : plan[i].includes('Run')||plan[i].includes('Intervals')? Math.round(tdee*1.06) : tdee;
     const p=Math.round(w*(isFast?1.2: plan[i]==='Rest'?1.6:1.9)), c=Math.round(kcal*(isFast?0.45:0.52)/4), f=Math.round(kcal*(isFast?0.22:0.26)/9);
     const m=isFast? (isVeg==='vegan'? 'Fasting-friendly: fruit + seeds • light veg soup • coconut yogurt' : 'Fasting-friendly: fruit + nuts • light soup • yogurt') : meals.join(' • ');
@@ -1215,7 +1229,7 @@ function runSelfTests(){
     return skipped>=4;
   })());
   assert('Streak counts 0 when empty', (()=>{
-    const prev=state.logs.length; state.logs=[]; const s=computeStats(); state.logs=prev?state.logs:prev; return true;
+    const prev=state.logs; state.logs=[]; const s=computeStats(); state.logs=prev; return true;
   })());
   const passed=tests.filter(t=>t.ok).length;
   const out=document.getElementById('testOut');
